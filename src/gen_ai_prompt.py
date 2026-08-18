@@ -276,28 +276,13 @@ def generate_opportunity_space(
 if __name__ == "__main__":
     DOMAIN = "Sustainability"
 
-    # Input dataset (including deliberate LLM edge cases like art_03)
-    RAW_ARTICLES = [
-        {
-            "id": "art_01",
-            "title": "Sodium-Ion Battery Breakthrough Promises 50% Lower Grid Storage Costs",
-            "url": "https://example.com/sodium-batteries",
-            "content": "Sodium-ion batteries are rapidly scaling as a non-lithium energy storage solution. Recent EU regulatory mandates require grid operators to reduce cobalt dependencies by 2028. Major buyers in the utility vertical are signing off-take agreements.",
-        },
-        {
-            "id": "art_02",
-            "title": "EU Enacts Strict Digital Product Passport Regulations for Textiles",
-            "url": "https://example.com/digital-product-passports",
-            "content": "Digital Product Passports (DPP) leverage blockchain and QR systems to track sustainability metrics. New EU legislation mandates compliance for fashion and electronics by 2027.",
-        },
-        {
-            "id": "art_03",
-            "title": "Direct Air Capture Plants Expand Commercial Operations in Europe",
-            "url": "https://example.com/dac-plants",
-            "content": "Direct Air Capture (DAC) systems remove CO2 directly from ambient air. Massive infrastructure investments in Scandinavia are driving pilot projects targeting corporate carbon offset buyers.",
-        },
-    ]
+    with open('./data/cybersecurity_signals.json', 'r') as file:
+        data = json.load(file)
 
+
+    # Input dataset (including deliberate LLM edge cases like art_03)
+    RAW_ARTICLES = [{'id': article['id'], 'title': article['title'], 'url': article['url'], 'content': article['body']} for article in data['articles']['results']
+    ]
     try:
         # Step 1: Extract Technologies
         step1_raw = extract_technologies(DOMAIN, RAW_ARTICLES)

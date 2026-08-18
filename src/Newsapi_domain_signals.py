@@ -67,6 +67,12 @@ DEFAULT_SUSTAINABILITY_KEYWORDS = [
     "supply chain traceability", "digital product passport", "carbon tax",
 ]
 
+DEFAULT_CYPERSECURITY_KEYWORDS = [
+    "cybersecurity","zero trust","ransomware",
+    "data breach","NIS2","cloud security","SASE",
+    "AI security","cyber insurance","phishing"
+]
+
 DEFAULT_DATA_TYPES = ["news", "pr"]
 
 EUROPEAN_COUNTRIES = [
@@ -145,7 +151,7 @@ def cap_keywords(keywords, limit=MAX_KEYWORDS):
 #===========================================================
 
 def fetch_signals(api_key, keywords, days, lang, max_articles, domain_label,
-                   europe_only=True, data_types=None, full_body=False):
+                   europe_only=True, data_types=None, full_body=False, category="Environment"):
     """
     STEP 3A — Keyword preparation
     STEP 3B — Event Registry initialization
@@ -166,7 +172,7 @@ def fetch_signals(api_key, keywords, days, lang, max_articles, domain_label,
         keywords=QueryItems.OR(keywords),
         lang=lang,
         dateStart=date_start,
-        categoryUri=er.getCategoryUri("Environment"),
+        categoryUri=er.getCategoryUri(category),
         isDuplicateFilter="skipDuplicates",
         ignoreSourceGroupUri="paywall/paywalled_sources",
         dataType=data_types or DEFAULT_DATA_TYPES,
@@ -266,18 +272,18 @@ def save_signals(signals, output_path):
 # STEP 5 — MAIN ENTRY POINT (START)
 #===========================================================
 
-def main():
+def main(domain: str):
     """CLI entry point: parse arguments → fetch signals → save output."""
 
     # STEP 5A — Parse CLI arguments
-    parser = argparse.ArgumentParser(description="Collect sustainability signals from NewsAPI.ai")
-    parser.add_argument("--keywords", type=str, default=",".join(DEFAULT_SUSTAINABILITY_KEYWORDS))
+    parser = argparse.ArgumentParser(description=f"Collect {domain} signals from NewsAPI.ai")
+    parser.add_argument("--keywords", type=str, default=",".join(DEFAULT_CYPERSECURITY_KEYWORDS))
     parser.add_argument("--days", type=int, default=30)
     parser.add_argument("--max-articles", type=int, default=200)
     parser.add_argument("--lang", type=str, default="eng")
-    parser.add_argument("--output", type=str, default="sustainability_signals.json")
+    parser.add_argument("--output", type=str, default=f"./data/{domain}_signals.json")
     parser.add_argument("--global", dest="global_scope", action="store_true")
-    parser.add_argument("--domain", type=str, default="Sustainability")
+    parser.add_argument("--domain", type=str, default=f"{domain.capitalize()}")
     parser.add_argument("--data-types", type=str, default=",".join(DEFAULT_DATA_TYPES))
     parser.add_argument("--full-body", action="store_true")
     args = parser.parse_args()
@@ -297,7 +303,7 @@ def main():
         domain_label=args.domain,
         europe_only=not args.global_scope,
         data_types=data_types,
-        full_body=args.full_body,
+        full_body=args.full_body, category = domain
     )
 
     # STEP 5E — Save output
@@ -308,4 +314,5 @@ def main():
 
 
 if __name__ == "__main__":
-    main()
+    domain = "cybersecurity"
+    main(domain)
