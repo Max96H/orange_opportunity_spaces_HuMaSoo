@@ -1,0 +1,233 @@
+{
+  "opportunity_space": [
+    {
+      "id": "OS001",
+      "domain": "Sustainability",
+      "technology_name": "AI-driven contrail mitigation for aviation",
+      "overview_definition": "AI models analyze atmospheric conditions and flight trajectories to predict contrail formation and recommend optimal flight path adjustments, reducing the climate-warming impact of aviation contrails.",
+      "signals_and_sources": {
+        "regulation": [],
+        "buying_signals": [],
+        "market_trends": []
+      },
+      "use_cases_and_value_drivers": [
+        {
+          "use_case": "Real-time flight path optimization to avoid contrail-prone airspace",
+          "value_driver": "Potential reduction of aviation-induced radiative forcing by up to 30%"
+        }
+      ],
+      "target_audience": {
+        "personas": [
+          "Airline route planners",
+          "Aviation sustainability officers"
+        ],
+        "verticals": [
+          "Commercial aviation",
+          "Air traffic management"
+        ],
+        "geographies": [
+          "Europe",
+          "North America",
+          "Asia-Pacific"
+        ]
+      },
+      "scoring": {
+        "attractiveness_score": 6,
+        "attractiveness_rationale": "Emerging AI capability aligns with airlines' decarbonisation goals, but no concrete market or regulatory signals were found in the source article.",
+        "urgency_score": 4,
+        "urgency_rationale": "Lack of immediate buying or regulatory pressure in the provided content suggests lower short-term urgency."
+      }
+    },
+    {
+      "id": "OS002",
+      "domain": "Cybersecurity",
+      "technology_name": "[FAKE] Cat-inspired Cybersecurity Models",
+      "overview_definition": "AI-powered cybersecurity models observe digital activity with cat-like curiosity, detecting suspicious behavior, identifying stealthy threats, and recommending evasive maneuvers before an incident occurs.",
+      "signals_and_sources": {
+        "regulation": [
+          {
+            "title": "Draft resilience requirements for autonomous security monitoring",
+            "insight": "Public authorities are defining minimum resilience and auditability requirements for AI-supported security monitoring.",
+            "url": "https://example.com"
+          },
+          {
+            "title": "Proposed compliance controls for AI-assisted threat detection",
+            "insight": "New controls would require explainability, logging, and human oversight for autonomous threat detection systems.",
+            "url": "https://example.com"
+          }
+        ],
+        "buying_signals": [
+          {
+            "title": "Large enterprise launches pilot for stealth anomaly detection",
+            "insight": "An enterprise security team is testing anomaly detection to reduce undetected lateral movement.",
+            "url": "https://example.com"
+          },
+          {
+            "title": "Managed security provider adds AI monitoring to customer contracts",
+            "insight": "A provider is packaging AI-assisted monitoring as a paid service for enterprise customers.",
+            "url": "https://example.com"
+          },
+          {
+            "title": "CISO survey shows budget allocated to false-positive reduction",
+            "insight": "Security leaders are reserving budget for tools that reduce alert noise and analyst workload.",
+            "url": "https://example.com"
+          }
+        ],
+        "market_trends": [
+          {
+            "title": "Autonomous cybersecurity agents become a recognized product category",
+            "insight": "Vendors are increasingly positioning autonomous agents as a distinct security operations category.",
+            "url": "https://example.com"
+          },
+          {
+            "title": "Behavior-based threat detection gains momentum across sectors",
+            "insight": "Detection strategies are moving from static rules toward behavior and anomaly analysis.",
+            "url": "https://example.com"
+          },
+          {
+            "title": "Continuous AI monitoring appears in security market reports",
+            "insight": "Analyst coverage suggests continuous AI monitoring is becoming a recurring theme in security operations.",
+            "url": "https://example.com"
+          }
+        ]
+      },
+      "use_cases_and_value_drivers": [
+        {
+          "use_case": "Detect suspicious activity by identifying digital behavior that appears unusually sneaky or out of place",
+          "value_driver": "Potential reduction in undetected threats through continuous, cat-like monitoring"
+        },
+        {
+          "use_case": "Automatically investigate unusual login patterns and quietly follow suspicious activity across systems",
+          "value_driver": "Faster threat investigation with fewer manual security operations"
+        },
+        {
+          "use_case": "Deploy an autonomous 'digital cat' that patrols endpoints and alerts security teams when something looks suspicious",
+          "value_driver": "Continuous security coverage with reduced analyst workload"
+        }
+      ],
+      "target_audience": {
+        "personas": [
+          "Security operations center analysts",
+          "Cybersecurity managers",
+          "Threat detection engineers",
+          "Chief information security officers"
+        ],
+        "verticals": [
+          "Enterprise cybersecurity",
+          "Cloud infrastructure",
+          "Financial services",
+          "Technology"
+        ],
+        "geographies": [
+          "Europe",
+          "North America",
+          "Asia-Pacific"
+        ]
+      },
+      "scoring": {
+        "attractiveness_score": 7,
+        "attractiveness_rationale": "Cat-inspired autonomous threat detection combines a memorable concept with relevant cybersecurity capabilities such as anomaly detection, stealth monitoring, and AI-assisted investigation.",
+        "urgency_score": 5,
+        "urgency_rationale": "The concept addresses persistent cybersecurity challenges, but the playful cat-inspired framing is primarily a placeholder concept rather than an established market or regulatory priority."
+      }
+    },
+    {
+      "id": "OS003",
+      "domain": "Cybersecurity",
+      "technology_name": "[FAKE] Riot Signal Acoustic Security Engine",
+
+      "overview_definition": "AI models analyze sound patterns, environmental noise, and digital activity to detect abnormal behavior and security threats, translating chaotic signals into actionable alerts with a raw, rebellious edge.",
+
+      "signals_and_sources": {
+        "regulation": [
+          {
+            "title": "Draft standards for AI-driven acoustic monitoring in critical sites",
+            "insight": "Standards bodies are defining acceptable use, retention, and audit requirements for acoustic monitoring systems.",
+            "url": "https://example.com"
+          },
+          {
+            "title": "Proposed framework for real-time anomaly detection governance",
+            "insight": "Governance rules would require documented escalation logic for real-time anomaly detection alerts.",
+            "url": "https://example.com"
+          }
+        ],
+        "buying_signals": [
+          {
+            "title": "Critical infrastructure operator issues monitoring tender",
+            "insight": "A buyer is seeking real-time detection across noisy operational environments.",
+            "url": "https://example.com"
+          },
+          {
+            "title": "Security integrator announces customer deployments of AI monitoring",
+            "insight": "Customer deployments suggest organizations are paying for AI-powered monitoring capabilities.",
+            "url": "https://example.com"
+          },
+          {
+            "title": "Enterprise security team funds noisy-environment detection proof of concept",
+            "insight": "Budget is being committed to test detection of anomalies hidden in high-volume data streams.",
+            "url": "https://example.com"
+          }
+        ],
+        "market_trends": [
+          {
+            "title": "AI-assisted security operations adoption accelerates",
+            "insight": "Security operations teams are increasingly using AI to triage, summarize, and prioritize alerts.",
+            "url": "https://example.com"
+          },
+          {
+            "title": "Real-time behavioral analytics expands beyond traditional IT monitoring",
+            "insight": "Behavioral analytics is moving into operational, physical, and hybrid environments.",
+            "url": "https://example.com"
+          },
+          {
+            "title": "Autonomous anomaly detection becomes a recurring vendor theme",
+            "insight": "Vendors are repeatedly emphasizing autonomous anomaly detection as a differentiator.",
+            "url": "https://example.com"
+          }
+        ]
+      },
+
+      "use_cases_and_value_drivers": [
+        {
+          "use_case": "Detect unusual activity hidden within high-volume acoustic and digital environments",
+          "value_driver": "Potential improvement in early-stage threat detection"
+        },
+        {
+          "use_case": "Identify sudden changes in behavioral patterns and escalate them before they become major incidents",
+          "value_driver": "Faster response to emerging security events"
+        },
+        {
+          "use_case": "Generate concise AI-driven alerts from chaotic streams of environmental and system data",
+          "value_driver": "Reduced analyst fatigue and faster investigation workflows"
+        }
+      ],
+
+      "target_audience": {
+        "personas": [
+          "Security operations analysts",
+          "Threat detection engineers",
+          "Security architects",
+          "Chief information security officers"
+        ],
+        "verticals": [
+          "Cybersecurity",
+          "Critical infrastructure",
+          "Enterprise technology",
+          "Digital media"
+        ],
+        "geographies": [
+          "Europe",
+          "North America",
+          "Asia-Pacific"
+        ]
+      },
+
+      "scoring": {
+        "attractiveness_score": 8,
+        "attractiveness_rationale": "The technology combines AI-driven anomaly detection with an unconventional acoustic intelligence concept, creating a distinctive and memorable cybersecurity proposition.",
+        "urgency_score": 6,
+        "urgency_rationale": "Increasingly complex digital environments create a growing need to identify meaningful signals within large volumes of noisy data, although the specific acoustic-security application remains experimental."
+      }
+    }
+  ]
+}
