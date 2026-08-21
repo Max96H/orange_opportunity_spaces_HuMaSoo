@@ -13,9 +13,9 @@ streamlit run src/frontend/app.py
 - `assets/`: Graphical assets such as OB logo and CSS.
 - `app.py`: Streamlit entrypoint. Loads global assets and data, renders the hero, and routes between the Radar and Opportunity detail views.
 - `front_config.py`: Shared configuration file for frontend. !! Separate from main config.py
-- `data_loader.py`: Data and asset loading helpers (JSON, CSS, logo base64 conversion).
+- `data_loader.py`: Data and asset loading helpers (db loading, CSS, logo base64 conversion).
 - `components.py`: Reusable UI components such as the hero, empty-state messages, signal sections, audience lists, and sidebar logo.
-- `views/opportunity.py`: Opportunity Space detail page. Lets the user select a domain and opportunity space, then displays scores, signals, use cases, audience, and raw JSON.
+- `views/opportunity.py`: Opportunity Space detail page. Lets the user select a domain and opportunity space, then displays scores, signals, use cases, audience, and raw data.
 - `views/radar.py`: Radar dashboard page. Builds the sonar-style Plotly radar and handles clicks on opportunity dots.
 
 ## `app.py`
@@ -27,7 +27,7 @@ Main responsibilities:
 - Configure the Streamlit page title and layout.
 - Load CSS from the configured stylesheet path.
 - Render the shared hero/header.
-- Load opportunity spaces from JSON.
+- Load opportunity spaces from SQLite(?) database.
 - Create the sidebar `View` selector.
 - Route to either the Radar view or the Opportunity detail view.
 - Manage view navigation from radar clicks through `st.session_state`.
@@ -37,7 +37,7 @@ Logic flow:
 1. `st.set_page_config(...)` sets browser/page metadata and wide layout.
 2. `load_css(config.CSS_PATH)` injects custom CSS into the Streamlit page.
 3. `render_hero()` displays the branded page header.
-4. `load_opportunity_spaces(config.DATA_PATH)` reads the opportunity-space JSON.
+4. `load_opportunity_spaces(config.DB_PATH)` reads the opportunity-space data.
 5. If no data is found, Streamlit shows an error and stops.
 6. `pending_view` is checked before the sidebar widget is created. This is important because Streamlit does not allow modifying an already-created widget key during the same run. It is required to make radar dots clickable :')
 7. The `View` selectbox chooses between `Radar` and `Opportunity detail`.
@@ -70,15 +70,20 @@ This file contains helpers for reading local files used by the frontend.
 
 ### `load_opportunity_spaces(path: Path) -> list[dict]`
 
-Loads opportunity-space data from a JSON file.
+Loads opportunity-space data from a SQLite database.
 
 Working logic:
 
-- Opens the file with UTF-8 encoding.
-- Parses it with `json.load`.
-- Returns the value under the top-level `opportunity_space` key.
-- If that key does not exist, returns an empty list.
+- Opens a connection to the database.
+- Configures the connection to return database rows that can be accessed by column name.
+- Queries the opportunity_space table to retrieve the basic opportunity information.
+- Orders the opportunities by their database ID.
+- Passes each opportunity to `build_opportunity_space()` to assemble its complete data.
+- `build_opportunity_space()` retrieves additional information from related tables.
+- Returns a list of assembled opportunity-space dictionaries.
+- Closes the database connection when finished.
 - Uses `@st.cache_data`, so Streamlit caches the result and does not reread the file on every rerun unless the input changes.
+- See the .py file for more details about helper functions like `build_opportunity_space()`.
 
 ### `load_css(path: Path) -> None`
 
