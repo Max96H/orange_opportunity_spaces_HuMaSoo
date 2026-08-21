@@ -16,7 +16,7 @@ st.set_page_config(
 load_css(config.CSS_PATH)
 render_hero()
 
-opportunity_spaces = load_opportunity_spaces(config.DATA_PATH)
+opportunity_spaces = load_opportunity_spaces(config.DB_PATH)
 
 if not opportunity_spaces:
     st.error("No opportunity spaces found.")
