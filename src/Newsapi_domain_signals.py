@@ -15,6 +15,7 @@ from pathlib import Path
 from datetime import datetime, timedelta, timezone
 from urllib.parse import urlparse
 from dotenv import load_dotenv
+from codecarbon import EmissionsTracker
 
 # GLOBAL UNIQUE INTEGER COUNTER
 GLOBAL_ID = 0
@@ -259,38 +260,51 @@ def run_all_domains(db_path="./data/signals.db"):
     if not api_key:
         sys.exit("NEWSAPI_AI_KEY not found. Add it to your .env file.")
 
-    conn = sqlite3.connect(db_path)
-    cursor = conn.cursor()
+    tracker = EmissionsTracker(
+        project_name="newsapi_domain_signals",
+        output_dir="./data",
+        output_file="codecarbon_newsapi_domain_signals.csv",
+    )
 
-    create_tables(cursor)
+    tracker.start()
 
-    for domain, keywords in DOMAIN_KEYWORD_MAP.items():
-        print(f"\n=== Fetching domain: {domain} ===")
+    try:
+        conn = sqlite3.connect(db_path)
+        cursor = conn.cursor()
 
-        signals = fetch_signals(
-            api_key=api_key,
-            keywords=keywords,
-            days=30,
-            lang="eng",
-            max_articles=500,
-            domain_label=domain,
-            europe_only=True,
-            data_types=DEFAULT_DATA_TYPES,
-            full_body=True,
-            category=domain
-        )
+        create_tables(cursor)
 
-        for signal in signals:
-            article_id = insert_article(cursor, signal)
-            insert_body(cursor, article_id, signal)
-            insert_verticals(cursor, article_id, signal)
-        print(f"Inserted {len(signals)} signals for domain '{domain}'. Waiting 10 seconds...")
-        time.sleep(20)
+        for domain, keywords in DOMAIN_KEYWORD_MAP.items():
+            print(f"\n=== Fetching domain: {domain} ===")
 
-    conn.commit()
-    conn.close()
+            signals = fetch_signals(
+                api_key=api_key,
+                keywords=keywords,
+                days=30,
+                lang="eng",
+                max_articles=500,
+                domain_label=domain,
+                europe_only=True,
+                data_types=DEFAULT_DATA_TYPES,
+                full_body=True,
+                category=domain
+            )
 
-    print(f"\nAll domains inserted directly into database: {db_path}")
+            for signal in signals:
+                article_id = insert_article(cursor, signal)
+                insert_body(cursor, article_id, signal)
+                insert_verticals(cursor, article_id, signal)
+            print(f"Inserted {len(signals)} signals for domain '{domain}'. Waiting 10 seconds...")
+            time.sleep(20)
+
+        conn.commit()
+        conn.close()
+
+        print(f"\nAll domains inserted directly into database: {db_path}")
+
+    finally:
+        emissions = tracker.stop()
+        print(f"CodeCarbon emissions: {emissions} kg CO2eq")
 
 
 #===========================================================

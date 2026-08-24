@@ -12,6 +12,8 @@ from dotenv import load_dotenv
 from huggingface_hub import InferenceClient
 from pydantic import BaseModel, ConfigDict, Field, field_validator
 from rapidfuzz import fuzz, process
+from codecarbon import EmissionsTracker
+from ecologits import EcoLogits
 
 from config import DOMAIN_KEYWORD_MAP
 
@@ -29,6 +31,7 @@ logging.basicConfig(
 )
 
 load_dotenv()
+EcoLogits.init(providers=["huggingface_hub"])
 
 HF_TOKEN = os.getenv("HF_TOKEN")
 if not HF_TOKEN:
@@ -294,13 +297,17 @@ def safe_api_call(messages: list, max_tokens: int = 4096, retries: int = 3) -> s
 
     for attempt in range(retries):
         try:
-            response = client.chat.completions.create(
+            response = client.chat_completion(
                 model=MODEL_ID,
                 messages=messages,
                 max_tokens=max_tokens,
                 temperature=0.2,
                 response_format={"type": "json_object"}
             )
+            impacts = getattr(response, "impacts", None)
+            if impacts is not None:
+                logging.info(f"EcoLogits impacts for model '{MODEL_ID}': {impacts}")
+
             # `message` is a ChatCompletionOutputMessage object, not a dict —
             # use attribute access, not subscripting.
             return response.choices[0].message.content
@@ -717,8 +724,21 @@ def main():
 
 
 if __name__ == "__main__":
+    tracker = EmissionsTracker(
+        project_name="gen_ai_prompt_pipeline",
+        output_dir="./data",
+        output_file="codecarbon_gen_ai_prompt.csv",
+    )
+
+    tracker.start()
+
     try:
         main()
+
     except KeyboardInterrupt:
         logging.info("Interrupted by user. Progress so far is saved — rerun to resume from where you left off.")
         sys.exit(130)
+
+    finally:
+        emissions = tracker.stop()
+        logging.info(f"CodeCarbon emissions: {emissions} kg CO2eq")
