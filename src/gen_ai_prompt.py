@@ -49,12 +49,18 @@ MODEL_ID = os.getenv("HF_MODEL_ID", "Qwen/Qwen2.5-Coder-32B-Instruct")
 # to resolve a provider differently than expected.
 client = InferenceClient(api_key=HF_TOKEN)
 
-DB_PATH = "./data/New_signals.db"
+DB_PATH = "./data/signals.db"
+
+TOP_N_TECHNOLOGIES = 10
+TOP_N_OPPORTUNITY_SPACES = 10
 
 # Fixed retry delay is wasteful (3 x 10s = 30s per failed call before giving
 # up) and identical whether the error was a network blip or a hard failure.
 # Use exponential backoff for genuinely transient errors instead.
 RETRY_BASE_DELAY_SECONDS = 5.0
+# Sleep only between domains — never between individual technologies or
+# opportunity spaces. This keeps the existing rate-limit protection without
+# adding 10x/20x delays now that outputs are larger.
 DOMAIN_SLEEP_SECONDS = float(os.getenv("DOMAIN_SLEEP_SECONDS", "30"))
 
 # Status codes that will NEVER succeed on retry with the same request/config
@@ -100,7 +106,7 @@ class TechnologyExtract(BaseModel):
 
 class Step1Response(BaseModel):
     domain: str
-    top_5_emerging_technologies: List[TechnologyExtract]
+    top_10_emerging_technologies: List[TechnologyExtract]
 
 
 # ==========================================
@@ -108,12 +114,12 @@ class Step1Response(BaseModel):
 # ==========================================
 
 STEP1_SYSTEM_PROMPT = """You are an expert technology foresight analyst.
-Your task is to analyze articles (JSON with ID and Title) and identify top 5 hot technologies.
+Your task is to analyze articles (JSON with ID and Title) and identify the top 10 hot technologies. To be a hot technology, it needs at least 3 articles talking about it.
 
 CRITICAL REQUIREMENT: Output your entire response as a single valid JSON object following this exact schema:
 {
   "domain": "target_domain",
-  "top_5_emerging_technologies": [
+  "top_10_emerging_technologies": [
     {
       "rank": 1,
       "technology_name": "Name",
@@ -125,6 +131,32 @@ CRITICAL REQUIREMENT: Output your entire response as a single valid JSON object 
 """
 
 STEP2_SYSTEM_PROMPT = """You are a strategic analyst mapping technology opportunities.
+Identify exactly 10 distinct opportunity spaces, one for each of the strongest technologies
+provided in the input. Do not return 5 or fewer. Avoid duplicates and keep each opportunity
+space meaningfully distinct.
+
+Opportunity Space = Vertical × Use Case × Technology
+
+An opportunity space is a specific innovation opportunity. It needs to be concrete and precise enough that sales and presales teams can actually act on it.
+
+What it IS:
+A concrete opportunity statement combining three dimensions:
+
+Vertical — the industry/customer segment (e.g., Manufacturing & Industrial, Public Sector, Finance & Insurance)
+Use Case — the specific business problem or application (e.g., Energy optimization, Demand forecasting, IT operations automation)
+Technology — the enabling tech (e.g., Cloud Data Platform, Computer Vision, IoT Platforms)
+
+Examples from the document:
+
+TMT | Network Modernization & SD-WAN | Network & SD-WAN
+Manufacturing & Industrial | Cloud Infrastructure Modernization | Cloud
+Public Sector | Cyber Defence & Zero Trust | Cybersecurity
+OS001 = Industry × Energy optimization × Computer Vision
+
+Why this structure matters:
+This three-part combination forces specificity — it's the difference between saying "we should look at AI" (useless for a salesperson) and "Predictive worker-safety wearables for chemicals plants" (something a sales rep can actually bring into a customer meeting, or a presales team can map to existing offerings and proof points).
+
+Each opportunity space then gets scored on attractiveness, urgency, and right-to-win, and packaged with evidence (signals), value drivers, target personas, and proof points — so it becomes something a user can immediately act on rather than just an abstract trend.
 Return a single valid JSON object matching this schema:
 {
   "opportunity_space": [
@@ -175,7 +207,7 @@ def normalize_step1(data: dict) -> dict:
     if "domain" not in data:
         data["domain"] = "unknown"
 
-    techs = data.get("top_5_emerging_technologies") or data.get("technologies") or []
+    techs = data.get("top_10_emerging_technologies") or data.get("technologies") or []
     normalized = []
 
     for idx, tech in enumerate(techs, start=1):
@@ -198,7 +230,8 @@ def normalize_step1(data: dict) -> dict:
         t["source_article_ids"] = raw_ids
         normalized.append(t)
 
-    data["top_5_emerging_technologies"] = normalized
+    # Keep the requested top 10 only.
+    data["top_10_emerging_technologies"] = normalized[:TOP_N_TECHNOLOGIES]
     return data
 
 
@@ -224,6 +257,19 @@ def normalize_step2(data: dict) -> dict:
         })
 
         cleaned_list.append(opp)
+
+    if len(cleaned_list) > TOP_N_OPPORTUNITY_SPACES:
+        logging.warning(
+            f"Model returned {len(cleaned_list)} opportunity spaces; "
+            f"truncating to top {TOP_N_OPPORTUNITY_SPACES}."
+        )
+        cleaned_list = cleaned_list[:TOP_N_OPPORTUNITY_SPACES]
+
+    if len(cleaned_list) < TOP_N_OPPORTUNITY_SPACES:
+        logging.warning(
+            f"Model returned only {len(cleaned_list)} opportunity spaces; "
+            f"expected {TOP_N_OPPORTUNITY_SPACES}."
+        )
 
     return {"opportunity_space": cleaned_list}
 
@@ -287,7 +333,7 @@ def safe_api_call(messages: list, max_tokens: int = 4096, retries: int = 3) -> s
 def extract_technologies(domain: str, raw_articles: List[dict]) -> dict:
     logging.info(f"Executing Step 1: Extracting Top Technologies from {domain}")
 
-    articles_payload = [{"id": a["id"], "title": a["title"]} for a in raw_articles[:30]]
+    articles_payload = [{"id": a["id"], "title": a["title"]} for a in raw_articles]
     user_content = f"Target Domain: {domain}\n\nArticles:\n{json.dumps(articles_payload, indent=2)}"
 
     messages = [
@@ -296,7 +342,8 @@ def extract_technologies(domain: str, raw_articles: List[dict]) -> dict:
     ]
 
     raw_json_str = safe_api_call(messages)
-    repaired = repair_json(raw_json_str, fallback={"domain": domain, "top_5_emerging_technologies": []})
+    logging.info(f"{raw_json_str}")
+    repaired = repair_json(raw_json_str, fallback={"domain": domain, "top_10_emerging_technologies": []})
     normalized = normalize_step1(repaired)
 
     validated = Step1Response.model_validate(normalized)
@@ -319,7 +366,7 @@ def resolve_and_filter_articles(
 
     collected_valid_ids = set()
 
-    for tech in step1_output.get("top_5_emerging_technologies", []):
+    for tech in step1_output.get("top_10_emerging_technologies", []):
         tech_name = tech.get("technology_name", "")
         raw_ids = tech.get("source_article_ids", [])
 
@@ -343,9 +390,9 @@ def resolve_and_filter_articles(
     filtered_articles = [valid_id_map[aid] for aid in collected_valid_ids if aid in valid_id_map]
 
     if not filtered_articles:
-        filtered_articles = raw_articles[:10]
+        filtered_articles = raw_articles[:20]
 
-    return step1_output, filtered_articles[:10]
+    return step1_output, filtered_articles[:20]
 
 
 # ==========================================
@@ -625,7 +672,7 @@ def main():
         try:
             step1_raw = extract_technologies(domain, raw_articles)
 
-            if not step1_raw.get("top_5_emerging_technologies"):
+            if not step1_raw.get("top_10_emerging_technologies"):
                 logging.warning(f"No technologies extracted for domain '{domain}'. Skipping Step 2.")
                 set_domain_status(db_path, domain, "failed")
                 continue
@@ -633,8 +680,16 @@ def main():
             step1_sanitized, filtered_articles = resolve_and_filter_articles(step1_raw, raw_articles)
             step2_final = generate_opportunity_space(domain, step1_sanitized, filtered_articles)
 
-            if step2_final.get("opportunity_space"):
-                save_opportunity_data(db_path, domain, step2_final["opportunity_space"])
+            opportunity_spaces = step2_final.get("opportunity_space", [])
+
+            if opportunity_spaces:
+                if len(opportunity_spaces) < TOP_N_OPPORTUNITY_SPACES:
+                    logging.warning(
+                        f"Domain '{domain}' produced {len(opportunity_spaces)} "
+                        f"opportunity spaces instead of {TOP_N_OPPORTUNITY_SPACES}."
+                    )
+
+                save_opportunity_data(db_path, domain, opportunity_spaces)
                 logging.info(f"Successfully saved Opportunity Space for domain: {domain}")
                 set_domain_status(db_path, domain, "success")
             else:
