@@ -272,11 +272,11 @@ def run_all_domains(db_path="./data/signals.db"):
             keywords=keywords,
             days=30,
             lang="eng",
-            max_articles=200,
+            max_articles=500,
             domain_label=domain,
             europe_only=True,
             data_types=DEFAULT_DATA_TYPES,
-            full_body=False,
+            full_body=True,
             category=domain
         )
 
@@ -285,7 +285,7 @@ def run_all_domains(db_path="./data/signals.db"):
             insert_body(cursor, article_id, signal)
             insert_verticals(cursor, article_id, signal)
         print(f"Inserted {len(signals)} signals for domain '{domain}'. Waiting 10 seconds...")
-        time.sleep(10)
+        time.sleep(20)
 
     conn.commit()
     conn.close()
