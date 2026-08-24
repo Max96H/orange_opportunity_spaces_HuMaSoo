@@ -127,6 +127,18 @@ def create_tables():
         );
     """)
 
+    # ---------------------------------------------------------
+    # 9. PARTNERS (linked to domains)
+    # ---------------------------------------------------------
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS partners (
+            id INTEGER PRIMARY KEY AUTOINCREMENT,
+            domain TEXT,
+            partner TEXT,
+            UNIQUE(domain, partner)
+        );
+    """)
+
     conn.commit()
     conn.close()
 
