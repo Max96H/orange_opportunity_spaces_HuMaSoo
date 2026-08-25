@@ -7,7 +7,7 @@ import sqlite3
 import sys
 import time
 from datetime import datetime, timezone
-from typing import List, Optional, Tuple
+from typing import List, Optional, Tuple, Any, Dict
 from dotenv import load_dotenv
 # from huggingface_hub import InferenceClient
 from pydantic import BaseModel, ConfigDict, Field, field_validator
@@ -85,8 +85,7 @@ class TechnologyExtract(BaseModel):
     model_config = ConfigDict(coerce_numbers_to_str=True)
 
     rank: int
-    technology_name: str
-    rationale: str
+    theme: str
     source_article_ids: List[str] = Field(default_factory=list)
 
     @field_validator("source_article_ids", mode="before")
@@ -103,13 +102,13 @@ class TechnologyExtract(BaseModel):
 
 class Step1Response(BaseModel):
     domain: str
-    top_10_emerging_technologies: List[TechnologyExtract]
+    top_10_trending_themes: List[TechnologyExtract]
 
 
 # ==========================================
 # 2. PROMPTS
 # ==========================================
-from prompts import STEP1_SYSTEM_PROMPT, STEP2_SYSTEM_PROMPT
+from prompts import STEP1_SYSTEM_PROMPT, STEP2_SYSTEM_PROMPT, STEP3_SYSTEM_PROMPT
 
 
 # ==========================================
@@ -131,19 +130,19 @@ def normalize_step1(data: dict) -> dict:
     if "domain" not in data:
         data["domain"] = "unknown"
 
-    techs = data.get("top_10_emerging_technologies") or data.get("technologies") or []
+    techs = data.get("top_10_trending_themes") or data.get("themes") or []
     normalized = []
 
     for idx, tech in enumerate(techs, start=1):
         t = {}
         t["rank"] = tech.get("rank", idx)
-        t["technology_name"] = (
-            tech.get("technology_name")
+        t["theme"] = (
+            tech.get("theme")
             or tech.get("technology")
             or tech.get("name")
             or "Unknown Technology"
         )
-        t["rationale"] = tech.get("rationale") or tech.get("description") or "No rationale provided."
+        #t["rationale"] = tech.get("rationale") or tech.get("description") or "No rationale provided."
 
         raw_ids = tech.get("source_article_ids") or tech.get("article_ids") or []
         if isinstance(raw_ids, (str, int, float)):
@@ -155,7 +154,7 @@ def normalize_step1(data: dict) -> dict:
         normalized.append(t)
 
     # Keep the requested top 10 only.
-    data["top_10_emerging_technologies"] = normalized[:TOP_N_TECHNOLOGIES]
+    data["top_10_trending_themes"] = normalized[:TOP_N_TECHNOLOGIES]
     return data
 
 
@@ -173,12 +172,12 @@ def normalize_step2(data: dict) -> dict:
         opp.setdefault("signals_and_sources", {})
         opp.setdefault("use_cases_and_value_drivers", [])
         opp.setdefault("target_audience", {"personas": [], "verticals": [], "geographies": []})
-        opp.setdefault("scoring", {
-            "attractiveness_score": 0,
-            "attractiveness_rationale": "No rationale.",
-            "urgency_score": 0,
-            "urgency_rationale": "No rationale."
-        })
+        # opp.setdefault("scoring", {
+        #     "attractiveness_score": 0,
+        #     "attractiveness_rationale": "No rationale.",
+        #     "urgency_score": 0,
+        #     "urgency_rationale": "No rationale."
+        # })
 
         cleaned_list.append(opp)
 
@@ -188,12 +187,14 @@ def normalize_step2(data: dict) -> dict:
             f"truncating to top {TOP_N_OPPORTUNITY_SPACES}."
         )
         cleaned_list = cleaned_list[:TOP_N_OPPORTUNITY_SPACES]
+    else:
+        logging.info(f"Model returned {len(cleaned_list)} opportunity spaces.")
 
-    if len(cleaned_list) < TOP_N_OPPORTUNITY_SPACES:
-        logging.warning(
-            f"Model returned only {len(cleaned_list)} opportunity spaces; "
-            f"expected {TOP_N_OPPORTUNITY_SPACES}."
-        )
+    # if len(cleaned_list) < TOP_N_OPPORTUNITY_SPACES:
+    #     logging.warning(
+    #         f"Model returned only {len(cleaned_list)} opportunity spaces; "
+    #         f"expected {TOP_N_OPPORTUNITY_SPACES}."
+    #     )
 
     return {"opportunity_space": cleaned_list}
 
@@ -229,6 +230,21 @@ def safe_api_call(messages: list, model_id: Optional[str] = None, max_tokens: in
         except Exception as e:
             last_exc = e
             status = _get_status_code(e)
+
+            # If Groq rejects json_object enforcement (HTTP 400), retry without hard response_format constraint
+            if status == 400 and "json" in str(e).lower() and attempt == 0:
+                logging.warning("Groq rejected json_object constraint. Retrying without hard response_format...")
+                try:
+                    response = client.chat.completions.create(
+                        model=target_model,
+                        messages=messages,
+                        max_completion_tokens=max_tokens,
+                        temperature=0.2
+                    )
+                    return response.choices[0].message.content
+                except Exception as inner_e:
+                    e = inner_e
+                    status = _get_status_code(e)
 
             if status == 429:
                 delay = 15.0 * (attempt + 1)
@@ -295,8 +311,8 @@ def resolve_and_filter_articles(
 
     collected_valid_ids = set()
 
-    for tech in step1_output.get("top_10_emerging_technologies", []):
-        tech_name = tech.get("technology_name", "")
+    for tech in step1_output.get("top_10_trending_themes", []):
+        tech_name = tech.get("theme", "")
         raw_ids = tech.get("source_article_ids", [])
 
         valid_ids = list(set(raw_ids).intersection(valid_ids_set))
@@ -325,7 +341,7 @@ def resolve_and_filter_articles(
 
 
 # ==========================================
-# 7. STEP 2 GENERATION
+# 7. STEP 2 & 3 GENERATION
 # ==========================================
 
 def generate_opportunity_space(domain: str, step1_result: dict, filtered_articles: List[dict]) -> dict:
@@ -351,14 +367,14 @@ def generate_opportunity_space(domain: str, step1_result: dict, filtered_article
     # tech_json = json.dumps(step1_result, separators=(',', ':'))
     # OPTIMIZATION: Strip bulky rationales from step1 payload to save tokens
     lean_techs = [
-        {"name": t.get("technology_name"), "ids": t.get("source_article_ids")}
-        for t in step1_result.get("top_10_emerging_technologies", [])
+        {"name": t.get("theme"), "ids": t.get("source_article_ids")}
+        for t in step1_result.get("top_10_trending_themes", [])
     ]
     tech_json = json.dumps(lean_techs, separators=(',', ':'))
 
     user_content = (
         f"Domain: {domain}\n"
-        f"Technologies: {tech_json}\n"
+        f"Themes: {tech_json}\n"
         f"Articles:\n{articles_formatted}"
     )
     messages = [
@@ -372,6 +388,77 @@ def generate_opportunity_space(domain: str, step1_result: dict, filtered_article
 
     return normalized
 
+def score_single_opportunity(opportunity: Dict[str, Any], model_id: Optional[str] = None) -> Dict[str, Any]:
+    """Helper function to call API and score one opportunity space."""
+    user_payload = json.dumps(opportunity, indent=2)
+
+    messages = [
+        {"role": "system", "content": STEP3_SYSTEM_PROMPT},
+        {"role": "user", "content": f"Input:\n{user_payload}"}
+    ]
+
+    try:
+        # Calls your existing safe_api_call function from earlier steps
+        raw_response = safe_api_call(messages=messages, model_id=model_id, max_tokens=500)
+        
+        # Clean potential markdown wrapping if returned
+        cleaned = raw_response.strip()
+        if cleaned.startswith("```json"):
+            cleaned = cleaned[7:]
+        if cleaned.endswith("```"):
+            cleaned = cleaned[:-3]
+        
+        score_data = json.loads(cleaned.strip())
+        return score_data
+
+    except Exception as e:
+        logging.warning(f"Failed to score opportunity '{opportunity.get('technology_name')}': {e}")
+        # Return fallback zeroed structure on failure so pipeline doesn't break
+        return {
+            "score": 0.0,
+            "components": {
+                "market_signal_strength": 0.0,
+                "source_diversity": 0.0,
+                "evidence_quality": 0.0
+            }
+        }
+
+
+def generate_scoring(opportunity_spaces: List[Dict[str, Any]], model_id: Optional[str] = None) -> List[Dict[str, Any]]:
+    """Iterates through all opportunity spaces, scores them, and sorts them by final score.
+
+    :param opportunity_spaces: List of dicts produced by Step 2.
+    :param model_id: Specific model to use (optional).
+    :return: Updated list of opportunity spaces sorted by score descending.
+    """
+    logging.info(f"Starting Step 3: Scoring {len(opportunity_spaces)} opportunity spaces...")
+
+    scored_spaces = []
+    
+    for idx, opp in enumerate(opportunity_spaces, start=1):
+        tech_name = opp.get("technology_name", f"Space {idx}")
+        logging.info(f"Scoring [{idx}/{len(opportunity_spaces)}]: {tech_name}")
+
+        # Compute scores using LLM engine
+        score_result = score_single_opportunity(opp, MODEL_ID_1)
+
+        # Attach score breakdown into the dictionary
+        opp["final_score"] = score_result.get("score", 0.0)
+        opp["score_components"] = score_result.get("components", {
+            "market_signal_strength": 0.0,
+            "source_diversity": 0.0,
+            "evidence_quality": 0.0
+        })
+
+        scored_spaces.append(opp)
+        logging.info("Space scored, pausing 10 seconds before next scoring.")
+        time.sleep(10)
+
+    # Sort opportunities from highest attractiveness to lowest
+    scored_spaces.sort(key=lambda x: x.get("final_score", 0.0), reverse=True)
+    
+    logging.info("Step 3 complete. Opportunities successfully scored and sorted.")
+    return scored_spaces
 
 # ==========================================
 # 8. DATABASE OPERATIONS
@@ -445,6 +532,16 @@ def init_db(db_path: str = DB_PATH):
                 attractiveness_rationale TEXT,
                 urgency_score REAL,
                 urgency_rationale TEXT
+            );
+        """)
+        cursor.execute("""
+            CREATE TABLE IF NOT EXISTS new_scoring (
+                opportunity_id INTEGER,
+                final_score REAL,
+                market_signal_strength REAL,
+                source_diversity REAL,
+                evidence_quality REAL,
+                FOREIGN KEY(opportunity_id) REFERENCES opportunity_space(id) ON DELETE CASCADE
             );
         """)
 
@@ -549,23 +646,38 @@ def save_opportunity_data(db_path: str, domain: str, opportunity_space_list: Lis
                         VALUES (?, ?, ?, ?);
                     """, (opp_id, None, None, geo))
 
-            scoring = opp.get("scoring", {})
-            if isinstance(scoring, dict):
+            # scoring = opp.get("scoring", {})
+            # if isinstance(scoring, dict):
+            #     cursor.execute("""
+            #         INSERT INTO scoring (
+            #             opportunity_id, attractiveness_score, attractiveness_rationale, urgency_score, urgency_rationale
+            #         ) VALUES (?, ?, ?, ?, ?);
+            #     """, (
+            #         opp_id,
+            #         scoring.get("attractiveness_score"),
+            #         scoring.get("attractiveness_rationale"),
+            #         scoring.get("urgency_score"),
+            #         scoring.get("urgency_rationale")
+            #     ))
+            fs = opp.get("final_score", {})
+            score_components = opp.get("score_components")
+            if isinstance(fs, float) and isinstance(score_components, dict):
+                mss = score_components["market_signal_strength"]
+                sd = score_components["source_diversity"]
+                eq = score_components["evidence_quality"]
                 cursor.execute("""
-                    INSERT INTO scoring (
-                        opportunity_id, attractiveness_score, attractiveness_rationale, urgency_score, urgency_rationale
-                    ) VALUES (?, ?, ?, ?, ?);
-                """, (
-                    opp_id,
-                    scoring.get("attractiveness_score"),
-                    scoring.get("attractiveness_rationale"),
-                    scoring.get("urgency_score"),
-                    scoring.get("urgency_rationale")
-                ))
+                    INSERT INTO new_scoring (
+                        opportunity_id, final_score, market_signal_strength, source_diversity, evidence_quality)
+                        VALUES (?, ?, ?, ?, ?);
+                """, (opp_id, 
+                      opp.get("final_score", 0.0), 
+                      score_components.get("market_signal_strength", 0.0), 
+                      score_components.get("source_diversity", 0.0), 
+                      score_components.get("evidence_quality", 0.0)))
+
 
         conn.commit()
-
-
+ 
 # ==========================================
 # 9. MAIN PIPELINE
 # ==========================================
@@ -621,7 +733,7 @@ def main():
         try:
             step1_raw = extract_technologies(domain, raw_articles)
 
-            if not step1_raw.get("top_10_emerging_technologies"):
+            if not step1_raw.get("top_10_trending_themes"):
                 logging.warning(f"No technologies extracted for domain '{domain}'. Skipping Step 2.")
                 set_domain_status(db_path, domain, "failed")
                 continue
@@ -631,15 +743,17 @@ def main():
             step2_final = generate_opportunity_space(domain, step1_sanitized, filtered_articles)
 
             opportunity_spaces = step2_final.get("opportunity_space", [])
+            time.sleep(20)
+            step3_scored_spaces = generate_scoring(opportunity_spaces)
 
-            if opportunity_spaces:
-                if len(opportunity_spaces) < TOP_N_OPPORTUNITY_SPACES:
-                    logging.warning(
-                        f"Domain '{domain}' produced {len(opportunity_spaces)} "
-                        f"opportunity spaces instead of {TOP_N_OPPORTUNITY_SPACES}."
-                    )
+            if step3_scored_spaces:
+                # if len(opportunity_spaces) < TOP_N_OPPORTUNITY_SPACES:
+                #     logging.warning(
+                #         f"Domain '{domain}' produced {len(opportunity_spaces)} "
+                #         f"opportunity spaces instead of {TOP_N_OPPORTUNITY_SPACES}."
+                #     )
 
-                save_opportunity_data(db_path, domain, opportunity_spaces)
+                save_opportunity_data(db_path, domain, step3_scored_spaces)
                 logging.info(f"Successfully saved Opportunity Space for domain: {domain}")
                 set_domain_status(db_path, domain, "success")
             else:
