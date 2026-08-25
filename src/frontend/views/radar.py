@@ -86,7 +86,7 @@ def render_radar(opportunity_spaces: list[dict]) -> None:
 
     render_sidebar_logo()
     st.header("Opportunity Radar")
-    st.caption("Slice = domain | Ring = final score | Dot size = market signal strength")
+    st.caption("Slice = domain | Ring = final score | Dot size = final score")
 
     domain_angles = get_domain_angles()
     slice_width = 360 / len(config.ORANGE_BUSINESS_DOMAINS)
@@ -111,7 +111,7 @@ def render_radar(opportunity_spaces: list[dict]) -> None:
 
         theta.append(domain_angles[domain])
         radius.append(final_score)
-        sizes.append(14 + market_signal * 4)
+        sizes.append(14 + final_score * 4)
         colors.append(DOMAIN_COLORS.get(domain, "#ff7900"))
         labels.append(space.get("id", ""))
         point_ids.append(space.get("id", ""))
