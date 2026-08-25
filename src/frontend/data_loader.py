@@ -109,7 +109,7 @@ def fetch_signals(
                articles.title,
                articles.url
         FROM opportunity_signals os
-        LEFT JOIN articles ON articles.url = os.article_id
+        LEFT JOIN articles ON CAST(articles.id AS TEXT) = os.article_id
         WHERE os.opportunity_id = ? AND articles.domain = ?
         ORDER BY os.id
         """,
