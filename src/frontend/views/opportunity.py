@@ -10,6 +10,12 @@ from components import (
 import front_config as config
 
 
+def format_score(score: int | float | None) -> str:
+    if isinstance(score, (int, float)):
+        return f"{score:g}/10"
+    return "N/A"
+
+
 def find_opportunity_by_id(
     opportunity_spaces: list[dict],
     selected_opportunity_id: str | None,
@@ -31,6 +37,14 @@ def render_opportunity_detail(
     opportunity_spaces: list[dict],
     selected_opportunity_id: str | None = None,
 ) -> None:
+    available_domains = [
+        domain
+        for domain in config.ORANGE_BUSINESS_DOMAINS
+        if any(space.get("domain") == domain for space in opportunity_spaces)
+    ]
+    if not available_domains:
+        available_domains = config.ORANGE_BUSINESS_DOMAINS
+
     selected_from_radar = find_opportunity_by_id(
         opportunity_spaces,
         selected_opportunity_id,
@@ -38,17 +52,17 @@ def render_opportunity_detail(
     default_domain = (
         selected_from_radar.get("domain")
         if selected_from_radar
-        else config.ORANGE_BUSINESS_DOMAINS[0]
+        else available_domains[0]
     )
     domain_index = (
-        config.ORANGE_BUSINESS_DOMAINS.index(default_domain)
-        if default_domain in config.ORANGE_BUSINESS_DOMAINS
+        available_domains.index(default_domain)
+        if default_domain in available_domains
         else 0
     )
 
     selected_domain = st.sidebar.selectbox(
         "Domain",
-        config.ORANGE_BUSINESS_DOMAINS,
+        available_domains,
         index=domain_index,
     )
 
@@ -104,21 +118,31 @@ def render_opportunity_detail(
     st.write(selected_space.get("overview_definition", "No overview available."))
 
     scoring = selected_space.get("scoring", {})
-    score_col_1, score_col_2 = st.columns(2)
+    score_col_1, score_col_2, score_col_3, score_col_4 = st.columns(4)
 
     with score_col_1:
         st.metric(
-            "Attractiveness",
-            f"{scoring.get('attractiveness_score', 'N/A')}/10",
+            "Final score",
+            format_score(scoring.get("final_score")),
         )
-        st.write(scoring.get("attractiveness_rationale", "No text available."))
 
     with score_col_2:
         st.metric(
-            "Urgency",
-            f"{scoring.get('urgency_score', 'N/A')}/10",
+            "Market signal",
+            format_score(scoring.get("market_signal_strength")),
         )
-        st.write(scoring.get("urgency_rationale", "No text available."))
+
+    with score_col_3:
+        st.metric(
+            "Source diversity",
+            format_score(scoring.get("source_diversity")),
+        )
+
+    with score_col_4:
+        st.metric(
+            "Evidence quality",
+            format_score(scoring.get("evidence_quality")),
+        )
 
     signals_tab, use_cases_tab, audience_tab, raw_data_tab = st.tabs(
         ["Signals", "Use cases", "Target audience", "Raw data"]
