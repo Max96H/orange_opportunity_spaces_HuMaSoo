@@ -15,15 +15,11 @@ DOMAIN_COLORS = {
 }
 
 
-def get_score(space: dict, score_name: str, default: int = 0) -> int:
+def get_score(space: dict, score_name: str, default: float = 0.0) -> float:
     score = space.get("scoring", {}).get(score_name, default)
     if isinstance(score, (int, float)):
-        return max(0, min(10, int(score)))
+        return max(0.0, min(10.0, float(score)))
     return default
-
-
-def urgency_to_radius(urgency_score: int) -> int:
-    return max(1, min(10, 11 - urgency_score))
 
 
 def get_domain_angles() -> dict[str, float]:
@@ -39,16 +35,17 @@ def build_radar_rows(opportunity_spaces: list[dict]) -> list[dict]:
 
     for space in opportunity_spaces:
         domain = space.get("domain", "Unassigned")
-        attractiveness = get_score(space, "attractiveness_score")
-        urgency = get_score(space, "urgency_score")
+        scoring = space.get("scoring", {})
 
         rows.append(
             {
                 "ID": space.get("id", ""),
                 "Domain": domain,
                 "Opportunity space": space.get("technology_name", "Untitled opportunity"),
-                "Attractiveness": attractiveness,
-                "Urgency": urgency,
+                "Final score": scoring.get("final_score"),
+                "Market signal": scoring.get("market_signal_strength"),
+                "Source diversity": scoring.get("source_diversity"),
+                "Evidence quality": scoring.get("evidence_quality"),
             }
         )
 
@@ -89,7 +86,7 @@ def render_radar(opportunity_spaces: list[dict]) -> None:
 
     render_sidebar_logo()
     st.header("Opportunity Radar")
-    st.caption("Slice = domain | Ring = urgency | Dot size = attractiveness")
+    st.caption("Slice = domain | Ring = final score | Dot size = market signal strength")
 
     domain_angles = get_domain_angles()
     slice_width = 360 / len(config.ORANGE_BUSINESS_DOMAINS)
@@ -107,12 +104,14 @@ def render_radar(opportunity_spaces: list[dict]) -> None:
         if domain not in domain_angles:
             continue
 
-        urgency = get_score(space, "urgency_score")
-        attractiveness = get_score(space, "attractiveness_score")
+        final_score = get_score(space, "final_score")
+        market_signal = get_score(space, "market_signal_strength")
+        source_diversity = get_score(space, "source_diversity")
+        evidence_quality = get_score(space, "evidence_quality")
 
         theta.append(domain_angles[domain])
-        radius.append(urgency_to_radius(urgency))
-        sizes.append(14 + attractiveness * 4)
+        radius.append(final_score)
+        sizes.append(14 + market_signal * 4)
         colors.append(DOMAIN_COLORS.get(domain, "#ff7900"))
         labels.append(space.get("id", ""))
         point_ids.append(space.get("id", ""))
@@ -120,8 +119,10 @@ def render_radar(opportunity_spaces: list[dict]) -> None:
             f"<b>{space.get('technology_name', 'Untitled opportunity')}</b><br>"
             f"ID: {space.get('id', 'N/A')}<br>"
             f"Domain: {domain}<br>"
-            f"Attractiveness: {attractiveness}/10<br>"
-            f"Urgency: {urgency}/10"
+            f"Final score: {final_score:g}/10<br>"
+            f"Market signal: {market_signal:g}/10<br>"
+            f"Source diversity: {source_diversity:g}/10<br>"
+            f"Evidence quality: {evidence_quality:g}/10"
         )
 
     fig = go.Figure()
@@ -169,7 +170,7 @@ def render_radar(opportunity_spaces: list[dict]) -> None:
             radialaxis=dict(
                 range=[0, 10],
                 tickvals=[2, 5, 8],
-                ticktext=["Now", "Next", "Later"],
+                ticktext=["Low", "Medium", "High"],
                 gridcolor="#cfcfcf",
                 showline=False,
             ),

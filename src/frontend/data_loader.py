@@ -26,12 +26,13 @@ def load_opportunity_spaces(path: Path) -> list[dict]:
     try:
         spaces = connection.execute(
             """
-            SELECT id,
-                   domain,
-                   technology_name,
-                   overview_definition
-            FROM opportunity_space
-            ORDER BY id
+            SELECT os.id,
+                   os.domain,
+                   os.technology_name,
+                   os.overview_definition
+            FROM opportunity_space os
+            INNER JOIN new_scoring ns ON ns.opportunity_id = os.id
+            ORDER BY os.id
             """
         ).fetchall()
 
@@ -61,26 +62,26 @@ def build_opportunity_space(
         "use_cases_and_value_drivers": fetch_use_cases(connection, opportunity_id),
         "target_audience": fetch_target_audience(connection, opportunity_id),
         "scoring": {
-            "attractiveness_score": scoring["attractiveness_score"] if scoring else None,
-            "attractiveness_rationale": scoring["attractiveness_rationale"] if scoring else "",
-            "urgency_score": scoring["urgency_score"] if scoring else None,
-            "urgency_rationale": scoring["urgency_rationale"] if scoring else "",
+            "final_score": scoring["final_score"] if scoring else None,
+            "market_signal_strength": scoring["market_signal_strength"] if scoring else None,
+            "source_diversity": scoring["source_diversity"] if scoring else None,
+            "evidence_quality": scoring["evidence_quality"] if scoring else None,
         },
     }
 
 
-# Fetches attractiveness and urgency scores from scoring table.
+# Fetches the new scoring model from new_scoring table.
 def fetch_scoring(
     connection: sqlite3.Connection,
     opportunity_id: int,
 ) -> sqlite3.Row | None:
     return connection.execute(
         """
-        SELECT attractiveness_score,
-               attractiveness_rationale,
-               urgency_score,
-               urgency_rationale
-        FROM scoring
+        SELECT final_score,
+               market_signal_strength,
+               source_diversity,
+               evidence_quality
+        FROM new_scoring
         WHERE opportunity_id = ?
         LIMIT 1
         """,
