@@ -2,9 +2,16 @@
 
 This folder contains the Streamlit frontend for the Orange Business Innovation Radar. The frontend files were separated in a `frontend/` folder so the UI can evolve independently.
 
+Requirements:
+```
+pip install streamlit
+pip install plotly
+pip install streamlit-plotly-events2
+```
+
 Run the frontend from the project root with:
 
-```powershell
+```
 streamlit run src/frontend/app.py
 ```
 

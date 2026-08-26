@@ -154,3 +154,82 @@ h3 {
   color: var(--black);
 }
 
+.ob-kpi-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-left: 6px solid var(--orange);
+  border-radius: 6px;
+  min-height: 118px;
+  padding: 1rem;
+}
+
+.ob-kpi-label {
+  color: var(--gray-600);
+  font-size: 0.85rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-bottom: 0.35rem;
+}
+
+.ob-kpi-value {
+  color: var(--black);
+  font-size: 1.8rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.ob-kpi-detail {
+  color: var(--charcoal);
+  font-size: 0.85rem;
+  font-weight: 600;
+  line-height: 1.25;
+  margin-top: 0.35rem;
+}
+
+.ob-domain-card {
+  background: var(--white);
+  border: 1px solid var(--gray-200);
+  border-radius: 6px;
+  margin-bottom: 1rem;
+  min-height: 150px;
+  padding: 1rem;
+}
+
+.ob-domain-card-title {
+  color: var(--black);
+  font-size: 1rem;
+  font-weight: 800;
+  line-height: 1.25;
+  margin-bottom: 0.8rem;
+}
+
+.ob-domain-card-grid {
+  display: grid;
+  gap: 0.75rem;
+  grid-template-columns: repeat(3, minmax(0, 1fr));
+}
+
+.ob-domain-card-value {
+  color: var(--black);
+  font-size: 1.35rem;
+  font-weight: 800;
+  line-height: 1.1;
+}
+
+.ob-domain-card-label {
+  color: var(--gray-600);
+  font-size: 0.75rem;
+  font-weight: 700;
+  line-height: 1.2;
+  margin-top: 0.2rem;
+}
+
+.ob-domain-card-priority {
+  border-top: 1px solid var(--gray-200);
+  color: var(--charcoal);
+  font-size: 0.85rem;
+  font-weight: 700;
+  margin-top: 0.85rem;
+  padding-top: 0.65rem;
+}
+
