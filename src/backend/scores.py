@@ -3,7 +3,7 @@ from typing import Dict, Any, List, Tuple
 
 
 MSS_SCORING = {0: 0, 1: 2, 2: 4, 3: 5, 4: 6, 5: 7, 6: 8, 7: 9}
-SD_SCORING = {0: 0, 1: 3, 2: 6, 3: 8, 4: 10}
+SD_SCORING = {0: 0, 1: 3, 2: 7, 3: 10}
 
 
 def score_single_opportunity(signals_and_sources: Dict[str, Any]) -> Tuple[int]:
