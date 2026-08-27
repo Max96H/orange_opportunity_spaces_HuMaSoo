@@ -282,14 +282,14 @@ if __name__ == "__main__":
     print(f"\nTED scan complete. Retrieved {len(result['signals'])} signals.")
 
     # Print results to terminal
-    for signal in result["signals"]:
-        print("\n" + "=" * 80)
-        print(f"Title: {signal['title']}")
-        print(f"Date: {signal['date']}")
-        print(f"URL: {signal['url']}")
-        print(f"External ID: {signal['external_id']}")
-        print("\nBody:")
-        print(signal["body"])
+    # for signal in result["signals"]:
+    #     print("\n" + "=" * 80)
+    #     print(f"Title: {signal['title']}")
+    #     print(f"Date: {signal['date']}")
+    #     print(f"URL: {signal['url']}")
+    #     print(f"External ID: {signal['external_id']}")
+    #     print("\nBody:")
+    #     print(signal["body"])
 
     # Save complete result
     save_scan_output(result)

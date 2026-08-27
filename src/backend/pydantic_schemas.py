@@ -22,4 +22,4 @@ class TechnologyExtract(BaseModel):
 
 class Step1Response(BaseModel):
     domain: str
-    top_10_trending_themes: List[TechnologyExtract]
+    top_5_trending_themes: List[TechnologyExtract]

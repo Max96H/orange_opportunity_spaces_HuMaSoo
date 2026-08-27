@@ -8,18 +8,17 @@ def generate_opportunity_space(domain: str,
                                step1_result: dict, 
                                filtered_articles: List[dict],
                                system_prompt: str,
-                               model: str,
-                               client: str) -> dict:
+                               models: List[str]) -> dict:
     logging.info(f"Executing Step 2: Building Opportunity Space for {domain}...")
 
     articles_formatted = "\n".join(
-        f"[{a['id']}] {a['url']} | {a['content'].strip()}..."
+        f"[{a['id']}] {a['url']} | {a['content'].strip()}"
         for a in filtered_articles
     )
 
     lean_techs = [
         {"name": t.get("theme"), "ids": t.get("source_article_ids")}
-        for t in step1_result.get("top_10_trending_themes", [])
+        for t in step1_result.get("top_5_trending_themes", [])
     ]
     tech_json = json.dumps(lean_techs, separators=(',', ':'))
 
@@ -29,8 +28,9 @@ def generate_opportunity_space(domain: str,
         f"Articles:\n{articles_formatted}"
     )
 
-    raw_json_str = safe_api_call(system_prompt, user_content, client, model, max_tokens=16384)
-    repaired = repair_json(raw_json_str, fallback={"opportunity_space": []})
+    raw_json_str = safe_api_call(system_prompt, user_content, models, max_tokens=16384)
+    logging.info(f"{raw_json_str}")
+    repaired = repair_json(raw_json_str, fallback={"opportunity_spaces": []})
     normalized = normalize_step2(repaired)
 
     return normalized

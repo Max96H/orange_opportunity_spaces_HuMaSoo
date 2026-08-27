@@ -12,79 +12,6 @@ SIGNAL_TYPE_MAP = {
     "regulatory": "regulation"
 }
 
-def init_db(db_path: str):
-    with sqlite3.connect(db_path) as conn:
-        cursor = conn.cursor()
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS opportunity_space (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                domain TEXT,
-                technology_name TEXT,
-                overview_definition TEXT
-            );
-        """)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS pipeline_state (
-                domain TEXT PRIMARY KEY,
-                status TEXT,
-                updated_at TEXT
-            );
-        """)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS opportunity_signals (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                opportunity_id INTEGER,
-                article_id TEXT,
-                signal_type TEXT,
-                insight TEXT
-            );
-        """)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS use_cases (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                opportunity_id INTEGER,
-                use_case TEXT,
-                value_driver TEXT
-            );
-        """)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS target_audience (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                opportunity_id INTEGER,
-                persona TEXT,
-                vertical TEXT,
-                geography TEXT
-            );
-        """)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS scoring (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                opportunity_id INTEGER,
-                attractiveness_score REAL,
-                attractiveness_rationale TEXT,
-                urgency_score REAL,
-                urgency_rationale TEXT
-            );
-        """)
-        cursor.execute("""
-            CREATE TABLE IF NOT EXISTS new_scoring (
-                opportunity_id INTEGER,
-                final_score REAL,
-                market_signal_strength REAL,
-                source_diversity REAL,
-                evidence_quality REAL,
-                FOREIGN KEY(opportunity_id) REFERENCES opportunity_space(id) ON DELETE CASCADE
-            );
-        """)
-
-        # Migration for DBs created before `domain` existed on this table.
-        cursor.execute("PRAGMA table_info(opportunity_space)")
-        existing_cols = {row[1] for row in cursor.fetchall()}
-        if "domain" not in existing_cols:
-            cursor.execute("ALTER TABLE opportunity_space ADD COLUMN domain TEXT;")
-
-        conn.commit()
-
 
 def get_domain_status(db_path: str, domain: str) -> Optional[str]:
     with sqlite3.connect(db_path) as conn:
@@ -112,8 +39,7 @@ def fetch_raw_articles(db_path: str, domain: str) -> List[dict]:
             SELECT a.id, a.title, a.url, b.body
             FROM articles a
             JOIN article_bodies b ON a.id = b.article_id
-            WHERE a.domain = ?
-            LIMIT 40;
+            WHERE a.domain = ?;
         """, (domain,))
         rows = cursor.fetchall()
 
@@ -163,33 +89,55 @@ def save_opportunity_data(db_path: str, domain: str, opportunity_space_list: Lis
             audience = opp.get("target_audience", {})
             if isinstance(audience, dict):
                 for persona in audience.get("personas", []):
-                    cursor.execute("""
-                        INSERT INTO target_audience (opportunity_id, persona, vertical, geography)
-                        VALUES (?, ?, ?, ?);
-                    """, (opp_id, persona, None, None))
+                    if persona:
+                        cursor.execute("""
+                            INSERT INTO opp_personas (opportunity_id, persona)
+                            VALUES (?, ?);
+                        """, (opp_id, persona))
                 for vertical in audience.get("verticals", []):
                     cursor.execute("""
-                        INSERT INTO target_audience (opportunity_id, persona, vertical, geography)
-                        VALUES (?, ?, ?, ?);
-                    """, (opp_id, None, vertical, None))
+                        INSERT INTO opp_verticals (opportunity_id, vertical)
+                        VALUES (?, ?);
+                    """, (opp_id, vertical))
                 for geo in audience.get("geographies", []):
                     cursor.execute("""
-                        INSERT INTO target_audience (opportunity_id, persona, vertical, geography)
-                        VALUES (?, ?, ?, ?);
-                    """, (opp_id, None, None, geo))
+                        INSERT INTO opp_geographies (opportunity_id, geography)
+                        VALUES (?, ?);
+                    """, (opp_id, geo))
 
-            fs = opp.get("final_score", {})
-            score_components = opp.get("score_components")
-            if isinstance(fs, float) and isinstance(score_components, dict):
+            score_components = opp.get("scores", {})
+            if isinstance(score_components, dict):
+                print("Inserting score , scores_components: ", score_components)
                 cursor.execute("""
-                    INSERT INTO new_scoring (
-                        opportunity_id, final_score, market_signal_strength, source_diversity, evidence_quality)
-                        VALUES (?, ?, ?, ?, ?);
+                    INSERT INTO scores (
+                        opportunity_id, 
+                        final_score,
+                        market_signal_strength,
+                        source_diversity,
+                        weighted_score,
+                        market_urgency,
+                        business_value_impact,
+                        technology_readiness,
+                        ease_of_implementation,
+                        cross_vertical_scalability,
+                        competitive_differentiation,
+                        scoring_rationale,
+                        priority_tier
+                        )
+                        VALUES (?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?, ?);
                 """, (opp_id, 
                       opp.get("final_score", 0.0), 
-                      score_components.get("market_signal_strength", 0.0), 
-                      score_components.get("source_diversity", 0.0), 
-                      score_components.get("evidence_quality", 0.0)))
+                      opp.get("market_signal_strength", 0.0), 
+                      opp.get("source_diversity", 0.0), 
+                      opp.get("weighted_score", 0.0),
+                      score_components.get("market_urgency", 0.0),
+                      score_components.get("business_value_impact", 0.0),
+                      score_components.get("technology_readiness", 0.0),
+                      score_components.get("ease_of_implementation", 0.0),
+                      score_components.get("cross_vertical_scalability", 0.0),
+                      score_components.get("competitive_differentiation", 0.0),
+                      opp.get("scoring_rationale", "Unknown"),
+                      opp.get("priority_tier", "Unknown")))
 
 
         conn.commit()
