@@ -1,6 +1,6 @@
 import streamlit as st
 
-from components import render_hero
+from components import render_hero, scroll_to_top_once
 from data_loader import load_css, load_opportunity_spaces
 from views.dashboard import render_dashboard
 from views.opportunity import render_opportunity_detail
@@ -25,6 +25,8 @@ if not opportunity_spaces:
 pending_view = st.session_state.pop("pending_view", None)
 if pending_view in ["Dashboard", "Opportunity detail"]:
     st.session_state["selected_view"] = pending_view
+
+scroll_to_top_once()
 
 selected_view = st.sidebar.radio(
     "View",

@@ -1,4 +1,5 @@
 import streamlit as st
+import streamlit.components.v1 as st_components
 
 from data_loader import image_to_base64
 import front_config as config
@@ -22,6 +23,20 @@ def render_hero() -> None:
         </section>
         """,
         unsafe_allow_html=True,
+    )
+
+
+def scroll_to_top_once() -> None:
+    if not st.session_state.pop("scroll_to_top", False):
+        return
+
+    st_components.html(
+        """
+        <script>
+          window.parent.scrollTo({ top: 0, left: 0, behavior: "instant" });
+        </script>
+        """,
+        height=0,
     )
 
 

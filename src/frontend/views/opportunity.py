@@ -12,8 +12,34 @@ import front_config as config
 
 def format_score(score: int | float | None) -> str:
     if isinstance(score, (int, float)):
-        return f"{score:g}/10"
+        return f"{score:.1f}/10"
     return "N/A"
+
+
+def score_status_class(score: int | float | None) -> str:
+    if not isinstance(score, (int, float)):
+        return "ob-score-empty"
+    if score >= 8:
+        return "ob-score-high"
+    if score >= 6:
+        return "ob-score-medium"
+    return "ob-score-low"
+
+
+def render_score_card(
+    label: str,
+    score: int | float | None,
+    extra_class: str = "ob-score-neutral",
+) -> None:
+    st.markdown(
+        f"""
+        <div class="ob-score-card {extra_class}">
+          <div class="ob-score-label">{label}</div>
+          <div class="ob-score-value">{format_score(score)}</div>
+        </div>
+        """,
+        unsafe_allow_html=True,
+    )
 
 
 def find_opportunity_by_id(
@@ -49,9 +75,12 @@ def render_opportunity_detail(
         opportunity_spaces,
         selected_opportunity_id,
     )
+    selected_from_dashboard = st.session_state.get("selected_domain")
     default_domain = (
         selected_from_radar.get("domain")
         if selected_from_radar
+        else selected_from_dashboard
+        if selected_from_dashboard in available_domains
         else available_domains[0]
     )
     domain_index = (
@@ -121,28 +150,32 @@ def render_opportunity_detail(
     score_col_1, score_col_2, score_col_3, score_col_4 = st.columns(4)
 
     with score_col_1:
-        st.metric(
+        final_score = scoring.get("final_score")
+        render_score_card(
             "Final score",
-            format_score(scoring.get("final_score")),
+            final_score,
+            score_status_class(final_score),
         )
 
     with score_col_2:
-        st.metric(
+        render_score_card(
             "Market signal",
-            format_score(scoring.get("market_signal_strength")),
+            scoring.get("market_signal_strength"),
         )
 
     with score_col_3:
-        st.metric(
+        render_score_card(
             "Source diversity",
-            format_score(scoring.get("source_diversity")),
+            scoring.get("source_diversity"),
         )
 
     with score_col_4:
-        st.metric(
-            "Evidence quality",
-            format_score(scoring.get("evidence_quality")),
+        render_score_card(
+            "Strategic potential",
+            scoring.get("weighted_score"),
         )
+
+    st.markdown('<div class="ob-score-card-spacer"></div>', unsafe_allow_html=True)
 
     signals_tab, use_cases_tab, audience_tab, raw_data_tab = st.tabs(
         ["Signals", "Use cases", "Target audience", "Raw data"]
