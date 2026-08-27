@@ -2,8 +2,8 @@ import streamlit as st
 
 from components import render_hero
 from data_loader import load_css, load_opportunity_spaces
+from views.dashboard import render_dashboard
 from views.opportunity import render_opportunity_detail
-from views.radar import render_radar
 
 import front_config as config
 
@@ -23,18 +23,18 @@ if not opportunity_spaces:
     st.stop()
 
 pending_view = st.session_state.pop("pending_view", None)
-if pending_view in ["Radar", "Opportunity detail"]:
+if pending_view in ["Dashboard", "Opportunity detail"]:
     st.session_state["selected_view"] = pending_view
 
-selected_view = st.sidebar.selectbox(
+selected_view = st.sidebar.radio(
     "View",
-    ["Radar", "Opportunity detail"],
+    ["Dashboard", "Opportunity detail"],
     key="selected_view",
 )
 
-if selected_view == "Radar":
-    render_radar(opportunity_spaces)
-else:
+if selected_view == "Dashboard":
+    render_dashboard(opportunity_spaces)
+elif selected_view == "Opportunity detail":
     render_opportunity_detail(
         opportunity_spaces,
         selected_opportunity_id=st.session_state.get("selected_opportunity_id"),
