@@ -5,7 +5,7 @@ PROJECT_ROOT = Path(__file__).resolve().parents[2]
 
 FRONTEND_PATH = PROJECT_ROOT / "src" / "frontend"
 
-DB_PATH = PROJECT_ROOT / "data" / "sus_cyb_fullBody_signals.db"
+DB_PATH = PROJECT_ROOT / "data" / "opportunity_spaces.db"
 DATA_PATH = PROJECT_ROOT / "data" / "os_example.json"
 CSS_PATH = FRONTEND_PATH / "assets" / "alt_styles.css"
 LOGO_PATH = FRONTEND_PATH / "assets" / "ob_logo.png"

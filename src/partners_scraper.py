@@ -4,7 +4,7 @@ from bs4 import BeautifulSoup
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path("./data/signals.db")
+DB_PATH = Path("./data/opportunity_spaces.db")
 
 PAGES_NUMBERS = {
     "cybersecurity": {"n": "1329", "expertise": True}, 
@@ -15,18 +15,6 @@ PAGES_NUMBERS = {
     "smart_industries": {"n": "1271", "expertise": False}
     }
 
-def init_db():
-    """Ensure the database directory and table exist."""
-    DB_PATH.parent.mkdir(parents=True, exist_ok=True)
-    with sqlite3.connect(DB_PATH) as conn:
-        conn.execute("""
-            CREATE TABLE IF NOT EXISTS partners (
-                id INTEGER PRIMARY KEY AUTOINCREMENT,
-                domain TEXT,
-                partner TEXT,
-                UNIQUE(domain, partner_name)
-            )
-        """) 
 
 def scrape_card_paragraphs(session: requests.Session, url: str) -> list[str]:
 
@@ -57,7 +45,6 @@ def scrape_card_paragraphs(session: requests.Session, url: str) -> list[str]:
     return extracted_texts
 
 def main():
-    init_db()
 
     with sqlite3.connect(DB_PATH) as conn, requests.Session() as session:
         session.headers.update(

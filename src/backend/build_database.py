@@ -11,7 +11,7 @@ Run this once to initialize the SQLite database.
 import sqlite3
 from pathlib import Path
 
-DB_PATH = Path("./data/signals.db")
+DB_PATH = Path("./data/opportunity_spaces.db")
 
 
 def create_tables():
@@ -19,10 +19,6 @@ def create_tables():
     cursor = conn.cursor()
 
     cursor.execute("PRAGMA foreign_keys = ON;")
-
-    # ---------------------------------------------------------
-    # 1. ARTICLES (raw signals metadata)
-    # ---------------------------------------------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS articles (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -34,46 +30,33 @@ def create_tables():
             signal_type_guess TEXT
         );
     """)
-
-    # ---------------------------------------------------------
-    # 2. ARTICLE BODIES (full text)
-    # ---------------------------------------------------------
+    
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS article_bodies (
-            article_id INTEGER PRIMARY KEY,
+            article_id INTEGER,
             body TEXT,
             FOREIGN KEY(article_id) REFERENCES articles(id) ON DELETE CASCADE
         );
     """)
 
-    # ---------------------------------------------------------
-    # 3. ARTICLE VERTICALS (1-to-many)
-    # ---------------------------------------------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS article_verticals (
-            id INTEGER,
+            article_id INTEGER,
             vertical TEXT,
-            FOREIGN KEY(id) REFERENCES articles(id) ON DELETE CASCADE
+            FOREIGN KEY(article_id) REFERENCES articles(id) ON DELETE CASCADE
         );
     """)
 
-    # ---------------------------------------------------------
-    # 4. OPPORTUNITY SPACE (root table)
-    # ---------------------------------------------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS opportunity_space (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
+            domain TEXT,
             technology_name TEXT NOT NULL,
             overview_definition TEXT
         );
     """)
-
-    # ---------------------------------------------------------
-    # 5. OPPORTUNITY SIGNALS (links opportunity → articles)
-    # ---------------------------------------------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS opportunity_signals (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
             opportunity_id INTEGER NOT NULL,
             article_id INTEGER NOT NULL,
             signal_type TEXT CHECK(signal_type IN (
@@ -85,12 +68,8 @@ def create_tables():
         );
     """)
 
-    # ---------------------------------------------------------
-    # 6. USE CASES & VALUE DRIVERS
-    # ---------------------------------------------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS use_cases (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
             opportunity_id INTEGER NOT NULL,
             use_case TEXT,
             value_driver TEXT,
@@ -98,38 +77,49 @@ def create_tables():
         );
     """)
 
-    # ---------------------------------------------------------
-    # 7. TARGET AUDIENCE (personas, verticals, geographies)
-    # ---------------------------------------------------------
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS target_audience (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            opportunity_id INTEGER NOT NULL,
+        CREATE TABLE IF NOT EXISTS opp_personas (
+            opportunity_id INTEGER,
             persona TEXT,
+            FOREIGN KEY(opportunity_id) REFERENCES opportunity_space(id) ON DELETE CASCADE
+        );
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS opp_verticals (
+            opportunity_id INTEGER,
             vertical TEXT,
+            FOREIGN KEY(opportunity_id) REFERENCES opportunity_space(id) ON DELETE CASCADE
+        );
+    """)
+
+    cursor.execute("""
+        CREATE TABLE IF NOT EXISTS opp_geographies (
+            opportunity_id INTEGER,
             geography TEXT,
             FOREIGN KEY(opportunity_id) REFERENCES opportunity_space(id) ON DELETE CASCADE
         );
     """)
 
-    # ---------------------------------------------------------
-    # 8. SCORING (attractiveness + urgency)
-    # ---------------------------------------------------------
     cursor.execute("""
-        CREATE TABLE IF NOT EXISTS scoring (
-            id INTEGER PRIMARY KEY AUTOINCREMENT,
-            opportunity_id INTEGER NOT NULL,
-            attractiveness_score INTEGER,
-            attractiveness_rationale TEXT,
-            urgency_score INTEGER,
-            urgency_rationale TEXT,
+        CREATE TABLE IF NOT EXISTS scores (
+            opportunity_id INTEGER,
+            final_score REAL,
+            market_signal_strength REAL,
+            source_diversity REAL,
+            weighted_score REAL,
+            market_urgency REAL,
+            business_value_impact REAL,
+            technology_readiness REAL,
+            ease_of_implementation REAL,
+            cross_vertical_scalability REAL,
+            competitive_differentiation REAL,
+            scoring_rationale TEXT,
+            priority_tier TEXT,
             FOREIGN KEY(opportunity_id) REFERENCES opportunity_space(id) ON DELETE CASCADE
         );
     """)
 
-    # ---------------------------------------------------------
-    # 9. PARTNERS (linked to domains)
-    # ---------------------------------------------------------
     cursor.execute("""
         CREATE TABLE IF NOT EXISTS partners (
             id INTEGER PRIMARY KEY AUTOINCREMENT,
@@ -139,6 +129,14 @@ def create_tables():
         );
     """)
 
+    cursor.execute("""
+            CREATE TABLE IF NOT EXISTS pipeline_state (
+                domain TEXT PRIMARY KEY,
+                status TEXT,
+                updated_at TEXT
+            );
+        """)
+    
     conn.commit()
     conn.close()
 

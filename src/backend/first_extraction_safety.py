@@ -15,7 +15,7 @@ def resolve_and_filter_articles(
 
     collected_valid_ids = set()
 
-    for tech in step1_output.get("top_10_trending_themes", []):
+    for tech in step1_output.get("top_5_trending_themes", []):
         tech_name = tech.get("theme", "")
         raw_ids = tech.get("source_article_ids", [])
 
@@ -41,4 +41,4 @@ def resolve_and_filter_articles(
     if not filtered_articles:
         filtered_articles = raw_articles[:10]
 
-    return step1_output, filtered_articles[:10]
+    return step1_output, filtered_articles

@@ -1,7 +1,8 @@
 import logging
 import json_repair
-TOP_N_TECHNOLOGIES = 10
-TOP_N_OPPORTUNITY_SPACES = 10
+from typing import List
+TOP_N_THEMES = 10
+TOP_N_OPPORTUNITY_SPACES = 20
 
 def repair_json(raw_json_str: str, fallback: dict) -> dict:
     try:
@@ -13,12 +14,24 @@ def repair_json(raw_json_str: str, fallback: dict) -> dict:
         logging.error(f"JSON repair failed: {e}")
         return fallback
 
+def repair_json_ted(raw_json_str: str, fallback: List[dict]) -> List[dict]:
+    try:
+        data = json_repair.loads(raw_json_str)
+        if not isinstance(data, list):
+            return fallback
+    
+        valid_dicts = [item for item in data if isinstance(item, dict)]
+        return valid_dicts if valid_dicts else fallback
+    
+    except Exception as e:
+        logging.error(f"JSON repair failed: {e}")
+        return fallback
 
 def normalize_step1(data: dict) -> dict:
     if "domain" not in data:
         data["domain"] = "unknown"
 
-    techs = data.get("top_10_trending_themes") or data.get("themes") or []
+    techs = data.get("top_5_trending_themes") or data.get("themes") or []
     normalized = []
 
     for idx, tech in enumerate(techs, start=1):
@@ -28,9 +41,8 @@ def normalize_step1(data: dict) -> dict:
             tech.get("theme")
             or tech.get("technology")
             or tech.get("name")
-            or "Unknown Technology"
+            or "Unknown Theme"
         )
-        #t["rationale"] = tech.get("rationale") or tech.get("description") or "No rationale provided."
 
         raw_ids = tech.get("source_article_ids") or tech.get("article_ids") or []
         if isinstance(raw_ids, (str, int, float)):
@@ -41,17 +53,16 @@ def normalize_step1(data: dict) -> dict:
         t["source_article_ids"] = raw_ids
         normalized.append(t)
 
-    # Keep the requested top 10 only.
-    data["top_10_trending_themes"] = normalized[:TOP_N_TECHNOLOGIES]
+    data["top_5_trending_themes"] = normalized[:TOP_N_THEMES]
     return data
 
 
 def normalize_step2(data: dict) -> dict:
-    if "opportunity_space" not in data or not isinstance(data["opportunity_space"], list):
-        return {"opportunity_space": []}
+    if "opportunity_spaces" not in data or not isinstance(data["opportunity_spaces"], list):
+        return {"opportunity_spaces": []}
 
     cleaned_list = []
-    for opp in data["opportunity_space"]:
+    for opp in data["opportunity_spaces"]:
         if not isinstance(opp, dict):
             continue
 
@@ -60,12 +71,10 @@ def normalize_step2(data: dict) -> dict:
         opp.setdefault("signals_and_sources", {})
         opp.setdefault("use_cases_and_value_drivers", [])
         opp.setdefault("target_audience", {"personas": [], "verticals": [], "geographies": []})
-        # opp.setdefault("scoring", {
-        #     "attractiveness_score": 0,
-        #     "attractiveness_rationale": "No rationale.",
-        #     "urgency_score": 0,
-        #     "urgency_rationale": "No rationale."
-        # })
+        opp.setdefault("scores", {})
+        opp.setdefault("weighted_score", 0.0)
+        opp.setdefault("priority_tier", "Unknown priority")
+        opp.setdefault("scoring_rationale", "Unknown scoring rationale")
 
         cleaned_list.append(opp)
 
@@ -78,10 +87,4 @@ def normalize_step2(data: dict) -> dict:
     else:
         logging.info(f"Model returned {len(cleaned_list)} opportunity spaces.")
 
-    # if len(cleaned_list) < TOP_N_OPPORTUNITY_SPACES:
-    #     logging.warning(
-    #         f"Model returned only {len(cleaned_list)} opportunity spaces; "
-    #         f"expected {TOP_N_OPPORTUNITY_SPACES}."
-    #     )
-
-    return {"opportunity_space": cleaned_list}
+    return {"opportunity_spaces": cleaned_list}

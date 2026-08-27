@@ -97,3 +97,8 @@ DOMAIN_KEYWORD_MAP = {
     "cx": DEFAULT_CX_KEYWORDS,
     "ex": DEFAULT_EX_KEYWORDS,
 }
+
+
+MODELS_STEP1=["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"]
+MODELS_STEP2=["gemini-3.6-flash", "gemini-3.5-flash", "gemini-3.5-flash-lite"]
+# MODELS_STEP3=["gemini-3.5-flash-lite"]

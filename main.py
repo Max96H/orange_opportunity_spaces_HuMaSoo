@@ -1,3 +1,9 @@
+from src.prompts import STEP1_SYSTEM_PROMPT, STEP2_SYSTEM_PROMPT
+from src.backend.first_extraction import extract_themes
+from src.backend.first_extraction_safety import resolve_and_filter_articles
+from src.backend.opportunity_spaces import generate_opportunity_space
+from src.backend.scores import generate_scoring
+from src.backend.db_operations import get_domain_status, set_domain_status, fetch_raw_articles, save_opportunity_data
 import logging
 import os
 from dotenv import load_dotenv
@@ -24,23 +30,12 @@ logging.basicConfig(
 
 load_dotenv()
 EcoLogits.init(providers=["google_genai"])
-GEMINI_API_KEY = os.getenv("GEMINI_API_KEY")
-if not GEMINI_API_KEY:
-    raise ValueError("GEMINI_API_KEY environment variable is not set in .env")
 
-# Initialize Gemini Client
-client = genai.Client(api_key=GEMINI_API_KEY)
-
-MODEL_STEP1=os.getenv("MODEL_STEP1")
-MODEL_STEP2=os.getenv("MODEL_STEP2")
-MODEL_STEP3=os.getenv("MODEL_STEP3")
+from src.config import MODELS_STEP1, MODELS_STEP2
 
 BASE_DIR = os.path.dirname(os.path.abspath(__file__))
 
-DB_PATH = os.path.join(BASE_DIR, "data", "sus_cyb_fullBody_signals.db")
-
-TOP_N_TECHNOLOGIES = 10
-TOP_N_OPPORTUNITY_SPACES = 10
+DB_PATH = os.path.join(BASE_DIR, "data", "opportunity_spaces.db")
 
 NON_RETRYABLE_STATUS_CODES = {400, 401, 402, 403, 404, 413, 422}
 FATAL_PIPELINE_STATUS_CODES = {400, 401, 402, 403}
@@ -49,55 +44,9 @@ class FatalPipelineError(RuntimeError):
     """Raised when an error means the whole run should stop, not just the
     current domain (e.g. exhausted HF credits, invalid model, bad auth)."""
 
-# ==========================================
-# 1. PYDANTIC SCHEMAS
-# ==========================================
-from src.backend.pydantic_schemas import TechnologyExtract, Step1Response
 
 # ==========================================
-# 2. PROMPTS
-# ==========================================
-from src.prompts import STEP1_SYSTEM_PROMPT, STEP2_SYSTEM_PROMPT, STEP3_SYSTEM_PROMPT
-
-# ==========================================
-# 3. JSON REPAIR UTILITIES
-# ==========================================
-
-from src.backend.json_repair_utilities import repair_json, normalize_step1, normalize_step2
-
-# ==========================================
-# 4. SAFE API CALL — CHAT COMPLETIONS
-# ==========================================
-
-from src.backend.safe_api_calls import _get_status_code, safe_api_call
-
-# ==========================================
-# 5. STEP 1 EXTRACTION
-# ==========================================
-
-from src.backend.first_extraction import extract_themes
-
-# ==========================================
-# 6. STEP 1 → ARTICLE RESOLUTION
-# ==========================================
-
-from src.backend.first_extraction_safety import resolve_and_filter_articles
-
-# ==========================================
-# 7. STEP 2 & 3 GENERATION
-# ==========================================
-
-from src.backend.opportunity_spaces import generate_opportunity_space
-from src.backend.scores import score_single_opportunity, generate_scoring
-
-# ==========================================
-# 8. DATABASE OPERATIONS
-# ==========================================
-from src.backend.db_operations import init_db, get_domain_status, set_domain_status, fetch_raw_articles, save_opportunity_data
-
-
-# ==========================================
-# 9. MAIN PIPELINE
+# 1. MAIN PIPELINE
 # ==========================================
 
 
@@ -126,7 +75,6 @@ def main():
     args = parse_args()
     db_path = args.db_path
 
-    init_db(db_path)
 
     domains_to_run = list(DOMAIN_KEYWORD_MAP.keys())
     if args.domains:
@@ -149,20 +97,22 @@ def main():
             continue
 
         try:
-            step1_raw = extract_themes(domain, raw_articles, STEP1_SYSTEM_PROMPT, MODEL_STEP1, client)
+            step1_raw = extract_themes(domain, raw_articles, STEP1_SYSTEM_PROMPT, MODELS_STEP1)
 
-            if not step1_raw.get("top_10_trending_themes"):
-                logging.warning(f"No technologies extracted for domain '{domain}'. Skipping Step 2.")
+            if not step1_raw.get("top_5_trending_themes"):
+                logging.warning(f"No themes extracted for domain '{domain}'. Skipping Step 2.")
                 set_domain_status(db_path, domain, "failed")
                 continue
 
             step1_sanitized, filtered_articles = resolve_and_filter_articles(step1_raw, raw_articles)
 
-            step2_final = generate_opportunity_space(domain, step1_sanitized, filtered_articles, STEP2_SYSTEM_PROMPT, MODEL_STEP2, client)
+            logging.info("Extracted themes for {domain}, pausing 60 seconds...")
+            time.sleep(60)
 
-            opportunity_spaces = step2_final.get("opportunity_space", [])
-            time.sleep(20)
-            step3_scored_spaces = generate_scoring(opportunity_spaces, MODEL_STEP3, STEP3_SYSTEM_PROMPT, client)
+            step2_final = generate_opportunity_space(domain, step1_sanitized, filtered_articles, STEP2_SYSTEM_PROMPT, MODELS_STEP2)
+
+            opportunity_spaces = step2_final.get("opportunity_spaces", [])
+            step3_scored_spaces = generate_scoring(opportunity_spaces)
 
             if step3_scored_spaces:
                 save_opportunity_data(db_path, domain, step3_scored_spaces)
@@ -171,6 +121,9 @@ def main():
             else:
                 logging.warning(f"Step 2 produced no opportunity spaces for domain '{domain}'.")
                 set_domain_status(db_path, domain, "failed")
+
+            logging.info(f"Generation done for {domain}, pausing 60 seconds...")
+            time.sleep(60)
 
         except FatalPipelineError as e:
             set_domain_status(db_path, domain, "failed")
