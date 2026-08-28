@@ -3,7 +3,7 @@ import streamlit as st
 from components import (
     render_empty_state,
     render_list_section,
-    render_sidebar_logo,
+    render_sidebar_source_link,
     render_signal_group,
 )
 
@@ -19,11 +19,7 @@ def format_score(score: int | float | None) -> str:
 def score_status_class(score: int | float | None) -> str:
     if not isinstance(score, (int, float)):
         return "ob-score-empty"
-    if score >= 8:
-        return "ob-score-high"
-    if score >= 6:
-        return "ob-score-medium"
-    return "ob-score-low"
+    return "ob-score-medium"
 
 
 def render_score_card(
@@ -104,7 +100,7 @@ def render_opportunity_detail(
     if not domain_opportunity_spaces:
         st.sidebar.markdown("**Opportunity spaces**")
         st.sidebar.caption("No opportunity spaces for this domain yet.")
-        render_sidebar_logo()
+        render_sidebar_source_link()
         st.caption(f"Domain: {selected_domain}")
         st.header("No opportunity spaces found")
         render_empty_state(
@@ -134,7 +130,7 @@ def render_opportunity_detail(
         index=opportunity_index,
     )
 
-    render_sidebar_logo()
+    render_sidebar_source_link()
 
     selected_space = next(
         space
