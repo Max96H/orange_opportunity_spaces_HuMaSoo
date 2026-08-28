@@ -67,7 +67,8 @@ Constants:
 - `PROJECT_ROOT`: Resolves the project root from `src/frontend/front_config.py`.
 - `DATA_PATH`: Path to data. For now `data/os_example.json`.
 - `CSS_PATH`: Path to CSS. For now `assets/alt_styles.css`.
-- `LOGO_PATH`: Path to OB Logo. For now `assets/ob_logo.png`.
+- `GITHUB_LOGO_PATH`: Path to the GitHub logo. For now `assets/github_logo.png`.
+- `GITHUB_URL`: Source-code link used by the sidebar placeholder.
 - `ORANGE_BUSINESS_DOMAINS`: Domain list.
 
 
@@ -111,33 +112,22 @@ Working logic:
 - Reads the image bytes from disk.
 - Encodes those bytes with Python's built-in `base64` module.
 - Decodes the result to UTF-8 text.
-- Uses `@st.cache_data` because the logo does not need to be reprocessed on every rerun.
+- Uses `@st.cache_data` because static image assets do not need to be reprocessed on every rerun.
 
 
 ## `components.py`
 
 This file contains reusable UI pieces used by multiple views.
 
-### `get_logo_img_html(class_name: str) -> str`
-
-Returns an HTML `<img>` tag for the Orange Business logo.
-
-Working logic:
-
-- Checks whether `config.LOGO_PATH` exists.
-- If the logo is missing, returns an empty string.
-- Converts the logo to base64 using `image_to_base64`(from `data_loader.py`).
-- Returns an HTML image tag using the provided CSS class name.
 
 
 ### `render_hero() -> None`
 
-Displays the main branded hero/header area.
+Displays the main hero/header area.
 
 Working logic:
 
 - Uses `st.markdown` to enable HTML.
-- Inserts the logo HTML from `get_logo_img_html("ob-logo-main")`.
 - Displays the Innovation Radar title and subtitle.
 
 
@@ -186,16 +176,15 @@ Working logic:
 - Otherwise writes each item as a bullet.
 
 
-### `render_sidebar_logo() -> None`
+### `render_sidebar_source_link() -> None`
 
-Displays the logo at the bottom of the sidebar.
+Displays the source-code link at the bottom of the sidebar.
 
 Working logic:
 
 - Adds a horizontal divider with `st.sidebar.markdown("---")`.
-- Checks whether the logo file exists.
-- Converts the logo to base64.
-- Renders it as HTML inside a wrapper `<div class="ob-sidebar-logo-wrap">`.
+- Uses the GitHub logo from `config.GITHUB_LOGO_PATH` when available.
+- Falls back to a `Source code` link button when the image is missing.
 - Position is controlled with CSS.
 
 

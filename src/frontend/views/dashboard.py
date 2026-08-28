@@ -2,7 +2,7 @@ from collections import defaultdict
 
 import streamlit as st
 
-from components import render_sidebar_logo
+from components import render_sidebar_source_link
 import front_config as config
 
 
@@ -49,7 +49,7 @@ def build_domain_summary(opportunity_spaces: list[dict]) -> list[dict]:
         if not spaces:
             continue
 
-        final_scores = [get_score(space, "final_score") for space in spaces]
+        total_scores = [get_score(space, "final_score") for space in spaces]
         market_scores = [
             get_score(space, "market_signal_strength")
             for space in spaces
@@ -68,7 +68,7 @@ def build_domain_summary(opportunity_spaces: list[dict]) -> list[dict]:
             {
                 "Domain": domain,
                 "Opportunity spaces": len(spaces),
-                "Avg final score": round(sum(final_scores) / len(final_scores), 1),
+                "Avg total score": round(sum(total_scores) / len(total_scores), 1),
                 "Avg market signal": round(sum(market_scores) / len(market_scores), 1),
                 "Avg strategic potential": round(
                     sum(strategic_scores) / len(strategic_scores),
@@ -112,16 +112,16 @@ def render_dashboard_metrics(
     total_spaces = len(opportunity_spaces)
     active_domains = len(domain_summary)
     high_priority_total = sum(row["High priority"] for row in domain_summary)
-    top_final_score, top_final_domain = get_leading_domain(
+    top_total_score, top_total_domain = get_leading_domain(
         domain_summary,
-        "Avg final score",
+        "Avg total score",
     )
     top_market_score, top_market_domain = get_leading_domain(
         domain_summary,
         "Avg market signal",
     )
 
-    metric_1, metric_2, metric_3, metric_4, metric_5 = st.columns(5)
+    metric_1, metric_2, metric_3, metric_4 = st.columns(4)
 
     with metric_1:
         render_kpi_card("Opportunity spaces", total_spaces)
@@ -130,13 +130,10 @@ def render_dashboard_metrics(
         render_kpi_card("Active domains", active_domains)
 
     with metric_3:
-        render_kpi_card("Top final score", top_final_score, top_final_domain)
+        render_kpi_card("Top total score", top_total_score, top_total_domain)
 
     with metric_4:
-        render_kpi_card("Top market signal", top_market_score, top_market_domain)
-
-    with metric_5:
-        render_kpi_card("High priority spaces", high_priority_total)
+        render_kpi_card("Number of high priority spaces", high_priority_total, "Spaces where score >= 8")
 
 
 def build_dashboard_rows(opportunity_spaces: list[dict]) -> list[dict]:
@@ -149,7 +146,7 @@ def build_dashboard_rows(opportunity_spaces: list[dict]) -> list[dict]:
                 "ID": space.get("id", ""),
                 "Domain": space.get("domain", "Unassigned"),
                 "Opportunity space": space.get("technology_name", "Untitled opportunity"),
-                "Final score": format_score_value(scoring.get("final_score")),
+                "Total score": format_score_value(scoring.get("final_score")),
                 "Market signal": format_score_value(scoring.get("market_signal_strength")),
                 "Source diversity": format_score_value(scoring.get("source_diversity")),
                 "Strategic potential": format_score_value(scoring.get("weighted_score")),
@@ -169,13 +166,13 @@ def render_domain_summary_chart(domain_summary: list[dict]) -> None:
 
     metric_options = {
         "Total opportunity spaces": "Opportunity spaces",
-        "Avg final score": "Avg final score",
+        "Avg total score": "Avg total score",
         "Avg market signal": "Avg market signal",
         "Avg strategic potential": "Avg strategic potential",
         "Total high priority spaces": "High priority",
     }
     selected_metric_label = st.selectbox(
-        "Domain metric",
+        "Domain metrics",
         list(metric_options.keys()),
     )
     selected_metric = metric_options[selected_metric_label]
@@ -270,7 +267,7 @@ def render_domain_scorecards(domain_summary: list[dict]) -> None:
                     with metric_col_1:
                         render_domain_card_stat("Spaces", row["Opportunity spaces"])
                     with metric_col_2:
-                        render_domain_card_stat("Final", row["Avg final score"])
+                        render_domain_card_stat("Total", row["Avg total score"])
                     with metric_col_3:
                         render_domain_card_stat("Market", row["Avg market signal"])
 
@@ -287,6 +284,45 @@ def render_domain_card_stat(label: str, value: str | int | float) -> None:
         """,
         unsafe_allow_html=True,
     )
+
+
+def normalize_clicked_id(value) -> str | None:
+    if value is None:
+        return None
+
+    if hasattr(value, "tolist"):
+        value = value.tolist()
+
+    while isinstance(value, (list, tuple)):
+        if not value:
+            return None
+        value = value[0]
+        if hasattr(value, "tolist"):
+            value = value.tolist()
+
+    if value is None:
+        return None
+
+    value = str(value)
+    return value if value else None
+
+
+def get_clicked_opportunity_id(clicked_point: dict, fig, rows: list[dict]) -> str | None:
+    selected_point_id = normalize_clicked_id(clicked_point.get("customdata"))
+    if selected_point_id:
+        return selected_point_id
+
+    curve_number = clicked_point.get("curveNumber")
+    point_index = clicked_point.get("pointIndex", clicked_point.get("pointNumber"))
+    if isinstance(curve_number, int) and isinstance(point_index, int):
+        trace_customdata = fig.data[curve_number].customdata
+        if trace_customdata is not None and 0 <= point_index < len(trace_customdata):
+            return normalize_clicked_id(trace_customdata[point_index])
+
+    if isinstance(point_index, int) and len(fig.data) == 1 and 0 <= point_index < len(rows):
+        return normalize_clicked_id(rows[point_index]["ID"])
+
+    return None
 
 
 def render_domain_bubble_chart(opportunity_spaces: list[dict]) -> None:
@@ -312,7 +348,7 @@ def render_domain_bubble_chart(opportunity_spaces: list[dict]) -> None:
     fig = px.scatter(
         rows,
         x="Domain",
-        y="Final score",
+        y="Total score",
         size="Source diversity",
         color="Domain",
         hover_name="Opportunity space",
@@ -346,12 +382,7 @@ def render_domain_bubble_chart(opportunity_spaces: list[dict]) -> None:
         return
 
     clicked_point = clicked_points[0]
-    customdata = clicked_point.get("customdata")
-    selected_point_id = customdata[0] if isinstance(customdata, list) else customdata
-    if not selected_point_id:
-        point_index = clicked_point.get("pointIndex", clicked_point.get("pointNumber"))
-        if isinstance(point_index, int) and 0 <= point_index < len(rows):
-            selected_point_id = rows[point_index]["ID"]
+    selected_point_id = get_clicked_opportunity_id(clicked_point, fig, rows)
 
     if selected_point_id:
         st.session_state["selected_opportunity_id"] = selected_point_id
@@ -360,62 +391,19 @@ def render_domain_bubble_chart(opportunity_spaces: list[dict]) -> None:
         st.rerun()
 
 
-# def render_domain_heatmap(domain_summary: list[dict]) -> None:
-#     try:
-#         import plotly.graph_objects as go
-#     except ModuleNotFoundError:
-#         st.error("Plotly is required for dashboard charts. Install it with: pip install plotly")
-#         return
-
-#     metrics = [
-#         "Opportunity spaces",
-#         "Avg final score",
-#         "Avg market signal",
-#         "Avg strategic potential",
-#         "High priority",
-#     ]
-#     domains = [row["Domain"] for row in domain_summary]
-#     values = [[row[metric] for metric in metrics] for row in domain_summary]
-
-#     fig = go.Figure(
-#         data=go.Heatmap(
-#             z=values,
-#             x=metrics,
-#             y=domains,
-#             colorscale=[
-#                 [0, "#f6f6f6"],
-#                 [0.5, "#ffb366"],
-#                 [1, "#ff7900"],
-#             ],
-#             hovertemplate="<b>%{y}</b><br>%{x}: %{z}<extra></extra>",
-#         )
-#     )
-
-#     fig.update_layout(
-#         height=420,
-#         font=dict(family="Arial, sans-serif", size=13, color="#1f3d58"),
-#         margin=dict(l=10, r=20, t=10, b=10),
-#         paper_bgcolor="#ffffff",
-#         plot_bgcolor="#ffffff",
-#     )
-
-#     st.plotly_chart(fig, use_container_width=True, config={"displayModeBar": False})
-
-
 def render_visual_exploration(
     opportunity_spaces: list[dict],
     domain_summary: list[dict],
 ) -> None:
     render_domain_scorecards(domain_summary)
     st.subheader("Domain bubbles")
-    st.caption("X = domain | Y = final score | Dot size = source diversity")
+    st.caption("X = domain | Y = Total score | Dot size = score")
     render_domain_bubble_chart(opportunity_spaces)
 
 
 def render_dashboard(opportunity_spaces: list[dict]) -> None:
-    render_sidebar_logo()
+    render_sidebar_source_link()
     st.header("Dashboard")
-    st.caption("Portfolio overview for Orange Business opportunity spaces")
 
     domain_summary = build_domain_summary(opportunity_spaces)
     render_dashboard_metrics(opportunity_spaces, domain_summary)
@@ -434,7 +422,7 @@ def render_dashboard(opportunity_spaces: list[dict]) -> None:
     with table_col:
         st.subheader("Opportunity spaces")
         selected_table_domain = st.selectbox(
-            "Table domain",
+            "Opportunity spaces per domain",
             ["All domains"] + config.ORANGE_BUSINESS_DOMAINS,
         )
         table_spaces = (
