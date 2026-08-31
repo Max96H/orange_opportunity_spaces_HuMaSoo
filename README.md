@@ -93,6 +93,17 @@ python src/partners_scraper.py
 This will scrape configured partner pages and insert partners into the DB.
 
 ## Data & DB
+
+# name1
+GEMINI_API_KEY_1=your_api_key
+# name2
+GEMINI_API_KEY_1=your_api_key
+# name3
+GEMINI_API_KEY_1=your_api_key
+
+- These keys should be kept locally in .env file without commiting them to cloud
+
+## Data & DB
 - Default DB path: `./data/opportunity_spaces.db`
 - Tables include: articles, article_bodies, article_verticals, partners, opportunity_spaces (scored results), and status tracking per domain.
 - See `src/ERD.jpeg` for schema visualization.
@@ -114,3 +125,11 @@ This will scrape configured partner pages and insert partners into the DB.
 ## License & Contact
 - No license file is present in the repo — add a LICENSE file if you plan to open-source.
 - For questions about this code: inspect `main.py`, `src/config.py`, and `src/prompts.py` for the main configuration and behavior.
+
+## Timeline
+- 2 weeks (17/08/2025 - 28/08/2028)
+
+## Contributors 
+- [Hussein Abuammar](https://www.linkedin.com/in/hussein-abuammar/)
+- [Max Huberland](https://www.linkedin.com/in/max-h-540881409/)
+- [Sooyoung Lee](https://www.linkedin.com/in/sooyoung-lee-patoobyte/)
