@@ -15,7 +15,7 @@ A lightweight pipeline that collects domain signals (news & partner pages), extr
 ### Stack
 - Language(s): Python (primary), CSS (small frontend portions)
 - Runtime: Python 3.10+ (recommended)
-- Notable libraries: streamlit, httpx, eventregistry, pandas, pydantic, codecarbon, ecologits, google-genai (via provider), huggingface tooling (present in requirements)
+- Notable libraries: streamlit, httpx, eventregistry, pandas, pydantic, codecarbon, ecologits, google-genai (via provider)
 
 
 
