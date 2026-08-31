@@ -21,20 +21,40 @@ A lightweight pipeline that collects domain signals (news & partner pages), extr
 
 ## Repo layout (top-level)
 ```
-.gitignore
-README.md
-requirements.txt           # Python deps
-main.py                    # Pipeline runner (domains → themes → opportunity spaces → scoring)
-latest_innovation_radar_presentation.odp
-data/                      # SQLite DB and outputs (./data/opportunity_spaces.db)
-src/
-  config.py                # Keywords, domains, model lists and global constants
-  prompts.py               # STEP1/STEP2 system prompts and classification prompts
-  newsapi_to_db.py         # News/Article fetcher → normalized DB insertion
-  partners_scraper.py      # Scraper for partner pages → DB insertion
-  ERD.jpeg                 # Database ERD / schema diagram
-  backend/                 # (pipeline components: extraction, sanitization, scoring, db ops)
-  frontend/                # (light web / visualization code; streamlit or similar)
+orange_opportunity_spaces_HuMaSoo/
+│
+├── .gitignore                          # Excludes Python artifacts, environments, and IDE configs.
+├── README.md                           # Project overview with setup instructions, architecture, and CLI usage.
+├── requirements.txt                    # Python dependencies (Streamlit, Pydantic, Google GenAI, CodeCarbon, etc.).
+├── main.py                             # Pipeline orchestrator: runs extraction → themes → opportunities → scoring per domain.
+├── latest_innovation_radar_presentation.odp # Presentation deck for stakeholders.
+│
+├── data/
+│   ├── codecarbon_gen_ai_prompt.csv    # CO₂ emissions log from LLM inference runs.
+│   ├── codecarbon_newapi_domain_signals.csv # Secondary emissions tracking log.
+│   └── opportunity_spaces.db           # SQLite database storing articles, themes, opportunities, scores, and pipeline status.
+│
+└── src/
+    │
+    ├── backend/
+    │   ├── build_database.py           # Creates SQLite schema: articles, opportunities, signals, scores, partners tables.
+    │   ├── first_extraction.py         # Step 1: LLM-driven theme extraction from articles with JSON repair & validation.
+    │   ├── first_extraction_safety.py  # Sanitizes extracted themes, resolves hallucinated article IDs, applies fuzzy matching.
+    │   ├── json_repair_utilities.py    # Fixes malformed JSON from LLMs and normalizes Step 1 & Step 2 outputs.
+    │   ├── opportunity_spaces.py       # Step 2: Generates opportunity spaces from themes using LLM with structured prompts.
+    │   ├── pydantic_schemas.py         # Defines Pydantic models for strict validation of themes & responses.
+    │   ├── safe_api_calls.py           # Resilient LLM wrapper with multi-model fallback & API key rotation/retry logic.
+    │   ├── scanner_ted.py              # Scrapes TED notices (EU procurement) and transforms them into signal format.
+    │   └── scores.py                   # Step 3: Scores opportunities by signal strength, diversity, and final weighted ranking.
+    │
+    └── frontend/
+        ├── assets/                     # Directory for CSS stylesheets, logos, and images.
+        ├── views/                      # Subdirectory containing dashboard and opportunity detail view pages.
+        ├── app.py                      # Streamlit entry point: loads data, renders hero, routes between Dashboard & Detail views.
+        ├── components.py               # Reusable Streamlit UI components (hero, empty states, signal groups, sidebar logo).
+        ├── data_loader.py              # Queries SQLite DB, builds opportunity-space objects from related tables, loads CSS/images.
+        ├── front_config.py             # Frontend configuration: paths, domain labels, GitHub URLs.
+        └── frontend.md                 # Frontend documentation describing views, components, and data flow.        
 ```
 
 How it fits together
@@ -103,9 +123,11 @@ This will scrape configured partner pages and insert partners into the DB.
 ## Data & DB
 - Default DB path: `./data/opportunity_spaces.db`
 - Tables include: articles, article_bodies, article_verticals, partners, opportunity_spaces (scored results), and status tracking per domain.
-- See `src/ERD.jpeg` for schema visualization.
+- See `src/ERD.jpeg` for schema visualization, created by [DrawDB](https://www.drawdb.app/)
 
 ![Entity Relationship Diagram](src/ERD.jpeg)
+
+
 
 
 ## Prompting & Models
@@ -121,10 +143,6 @@ This will scrape configured partner pages and insert partners into the DB.
 ## Contributing
 - Add issues or PRs for bug fixes, improved prompts, or additional domains.
 - To add a domain, update `src/config.py`'s `DOMAIN_KEYWORD_MAP` with keywords and ensure scraping/collection rules are appropriate.
-
-## License & Contact
-- No license file is present in the repo — add a LICENSE file if you plan to open-source.
-- For questions about this code: inspect `main.py`, `src/config.py`, and `src/prompts.py` for the main configuration and behavior.
 
 ## Timeline
 - 2 weeks (17/08/2025 - 28/08/2028)
