@@ -105,6 +105,9 @@ This will scrape configured partner pages and insert partners into the DB.
 - Tables include: articles, article_bodies, article_verticals, partners, opportunity_spaces (scored results), and status tracking per domain.
 - See `src/ERD.jpeg` for schema visualization.
 
+![Entity Relationship Diagram](src/ERD.jpeg)
+
+
 ## Prompting & Models
 - Prompt templates live in `src/prompts.py`. STEP1 extracts top themes and returns a strict JSON schema; STEP2 generates opportunity spaces and a scoring breakdown.
 - Models used are defined in `src/config.py` (MODELS_STEP1, MODELS_STEP2). Adjust models/providers through `src/config.py` and your environment/credentials.
