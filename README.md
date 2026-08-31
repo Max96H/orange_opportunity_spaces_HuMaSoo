@@ -2,6 +2,9 @@
 
 A lightweight pipeline that collects domain signals (news & partner pages), extracts recurring themes with an LLM-guided workflow, generates actionable "opportunity spaces" (industry × use case × technology), scores them, and stores results in a local SQLite radar database. Intended for technology foresight analysts and innovation teams who want reproducible, auditable opportunity discovery across multiple domains.
 
+[Deployed Streamlit App](https://orange-innovation-radar.streamlit.app/)  
+
+
 ## Highlights
 - Collects domain signals (news, PRs) and partner content.
 - Two-step LLM workflow: theme extraction → opportunity-space generation (with structured prompts).
@@ -13,6 +16,8 @@ A lightweight pipeline that collects domain signals (news & partner pages), extr
 - Language(s): Python (primary), CSS (small frontend portions)
 - Runtime: Python 3.10+ (recommended)
 - Notable libraries: streamlit, httpx, eventregistry, pandas, pydantic, codecarbon, ecologits, google-genai (via provider), huggingface tooling (present in requirements)
+
+
 
 ## Repo layout (top-level)
 ```
@@ -60,8 +65,9 @@ pip install -r requirements.txt
 3. Environment variables
 Create a `.env` file at the project root containing API keys and any required credentials. At minimum:
 - NEWSAPI_AI_KEY — API key for the Event Registry / NewsAPI integration used by `src/newsapi_to_db.py`
-- (LLM / GenAI credentials) — the pipeline uses a GenAI provider (code references `google.genai` and Ecologits); configure the provider credentials according to your GenAI provider and Ecologits instructions.
-- Any other keys required by third-party services referenced in code (check `.env` usages in source files).
+- GEMINI_API_KEY_1 / GEMINI_API_KEY_2 / GEMINI_API_KEY_3 — the pipeline uses a GenAI provider. Optimization allows rotation between API Keys.
+> [!CAUTION]
+> Keep your API Keys in a local file.
 
 4. Initialize / inspect database
 - The pipeline writes to `./data/opportunity_spaces.db` by default. You can inspect the ERD at `src/ERD.jpeg`.
@@ -92,16 +98,7 @@ python src/partners_scraper.py
 ```
 This will scrape configured partner pages and insert partners into the DB.
 
-## Data & DB
 
-# name1
-GEMINI_API_KEY_1=your_api_key
-# name2
-GEMINI_API_KEY_1=your_api_key
-# name3
-GEMINI_API_KEY_1=your_api_key
-
-- These keys should be kept locally in .env file without commiting them to cloud
 
 ## Data & DB
 - Default DB path: `./data/opportunity_spaces.db`
