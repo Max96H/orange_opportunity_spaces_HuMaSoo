@@ -23,38 +23,54 @@ A lightweight pipeline that collects domain signals (news & partner pages), extr
 ```
 orange_opportunity_spaces_HuMaSoo/
 │
-├── .gitignore                          # Excludes Python artifacts, environments, and IDE configs.
-├── README.md                           # Project overview with setup instructions, architecture, and CLI usage.
-├── requirements.txt                    # Python dependencies (Streamlit, Pydantic, Google GenAI, CodeCarbon, etc.).
-├── main.py                             # Pipeline orchestrator: runs extraction → themes → opportunities → scoring per domain.
-├── latest_innovation_radar_presentation.odp # Presentation deck for stakeholders.
+├── .gitignore                                    # Git ignore patterns (Python cache, venv, .env, IDE configs)
+├── README.md                                     # Project guide: setup, architecture, CLI usage
+├── requirements.txt                              # Python dependencies (Streamlit, Pydantic, Google GenAI, CodeCarbon, etc.)
+├── main.py                                       # Main pipeline orchestrator (domain → themes → opportunities → scoring)
+├── latest_innovation_radar_presentation.odp     # Stakeholder presentation deck
 │
-├── data/
-│   ├── codecarbon_gen_ai_prompt.csv    # CO₂ emissions log from LLM inference runs.
-│   ├── codecarbon_newapi_domain_signals.csv # Secondary emissions tracking log.
-│   └── opportunity_spaces.db           # SQLite database storing articles, themes, opportunities, scores, and pipeline status.
+├── data/                                         # Persistent data storage
+│   ├── opportunity_spaces.db                     # SQLite database (articles, opportunities, scores, pipeline state)
+│   ├── codecarbon_gen_ai_prompt.csv              # CO₂ emissions log from LLM inference runs
+│   └── codecarbon_newapi_domain_signals.csv      # Emissions tracking for domain signal collection
 │
-└── src/
+└── src/                                          # Source code
     │
-    ├── backend/
-    │   ├── build_database.py           # Creates SQLite schema: articles, opportunities, signals, scores, partners tables.
-    │   ├── first_extraction.py         # Step 1: LLM-driven theme extraction from articles with JSON repair & validation.
-    │   ├── first_extraction_safety.py  # Sanitizes extracted themes, resolves hallucinated article IDs, applies fuzzy matching.
-    │   ├── json_repair_utilities.py    # Fixes malformed JSON from LLMs and normalizes Step 1 & Step 2 outputs.
-    │   ├── opportunity_spaces.py       # Step 2: Generates opportunity spaces from themes using LLM with structured prompts.
-    │   ├── pydantic_schemas.py         # Defines Pydantic models for strict validation of themes & responses.
-    │   ├── safe_api_calls.py           # Resilient LLM wrapper with multi-model fallback & API key rotation/retry logic.
-    │   ├── scanner_ted.py              # Scrapes TED notices (EU procurement) and transforms them into signal format.
-    │   └── scores.py                   # Step 3: Scores opportunities by signal strength, diversity, and final weighted ranking.
+    ├── ERD.jpeg                                  # Database schema visualization (DrawDB)
+    ├── config.py                                 # Central config: domains, keywords, model lists, API setup
+    ├── newsapi_to_db.py                          # Fetches domain news from Event Registry; inserts into DB
+    ├── partners_scraper.py                       # Scrapes Orange partner pages; populates partners table
+    ├── prompts.py                                # LLM system prompts (Step1/Step2 extraction, TED classification)
     │
-    └── frontend/
-        ├── assets/                     # Directory for CSS stylesheets, logos, and images.
-        ├── views/                      # Subdirectory containing dashboard and opportunity detail view pages.
-        ├── app.py                      # Streamlit entry point: loads data, renders hero, routes between Dashboard & Detail views.
-        ├── components.py               # Reusable Streamlit UI components (hero, empty states, signal groups, sidebar logo).
-        ├── data_loader.py              # Queries SQLite DB, builds opportunity-space objects from related tables, loads CSS/images.
-        ├── front_config.py             # Frontend configuration: paths, domain labels, GitHub URLs.
-        └── frontend.md                 # Frontend documentation describing views, components, and data flow.        
+    ├── backend/                                  # Core pipeline logic
+    │   │
+    │   ├── build_database.py                     # Initializes SQLite schema with all required tables
+    │   ├── db_operations.py                      # Database I/O: fetch articles, save opportunities, manage domain status
+    │   ├── first_extraction.py                   # Step 1: LLM-driven theme extraction from articles
+    │   ├── first_extraction_safety.py            # Sanitizes themes, resolves hallucinated IDs, fuzzy matching fallback
+    │   ├── json_repair_utilities.py              # Fixes malformed LLM JSON; normalizes Step1/Step2 outputs
+    │   ├── pydantic_schemas.py                   # Pydantic validators for type-safe parsing of LLM responses
+    │   ├── opportunity_spaces.py                 # Step 2: LLM-driven opportunity space generation from themes
+    │   ├── safe_api_calls.py                     # Resilient LLM wrapper (multi-model fallback, key rotation, retries)
+    │   ├── scores.py                             # Step 3: Scores opportunities (signal strength, diversity, weighted rank)
+    │   ├── scanner_ted.py                        # Fetches EU procurement notices (TED API) → transforms to signal format
+    │   └── ted_to_db.py                          # Classifies TED notices into domains; inserts into articles table
+    │
+    └── frontend/                                 # Streamlit UI application
+        │
+        ├── app.py                                # Streamlit entry point: routing & view management
+        ├── components.py                         # Reusable Streamlit components (hero, cards, empty states, sidebar)
+        ├── data_loader.py                        # SQLite queries; builds opportunity objects for UI rendering
+        ├── front_config.py                       # Frontend config (DB path, CSS path, domain labels, GitHub URL)
+        ├── frontend.md                           # Frontend documentation (views, data flow, components)
+        │
+        ├── assets/                               # Static assets
+        │   ├── alt_styles.css                    # Custom Streamlit styling
+        │   └── humasoo_logo.png                  # Logo for sidebar navigation
+        │
+        └── views/                                # Streamlit page components
+            ├── dashboard.py                      # Dashboard: filterable grid of all opportunities
+            └── opportunity.py                    # Detail view: full opportunity breakdown with scoring
 ```
 
 How it fits together
